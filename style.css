@@ -1,0 +1,279 @@
+@font-face {
+    font-family: 'Inter';
+    src: url('fonts/Inter.woff2') format('woff2');
+    src: url('fonts/Inter.woff') format('woff');
+    src: url('fonts/Inter.otf') format('opentype');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  /* color tokens */
+  :root{
+    --color-zinc-50:#FAFAFA;
+    --color-zinc-100:#F4F4F5;
+    --color-zinc-200:#E4E4E7;
+    --color-zinc-300:#D4D4D8;
+    --color-zinc-400:#A1A1AA;
+    --color-zinc-500:#71717A;
+    --color-zinc-600:#52525B;
+    --color-zinc-700:#3F3F46;
+    --color-zinc-800:#27272A;
+    --color-zinc-900:#18181B;
+    --color-zinc-950:#09090B;
+  
+    --color-primary:#143EE2;
+    --color-primary-hover:#2750EC;
+  
+    --font-sans:'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+  }
+  
+  /* base */
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family:var(--font-sans);
+    background:var(--color-zinc-950);
+    color:var(--color-zinc-50);
+  }
+  
+  /* hero layout */
+  .hero{
+    min-height:100vh;
+    display:grid;
+    grid-template-rows:auto auto 1fr;
+    place-items:center;
+    gap:24px;
+    padding:200px 20px;
+  }
+  
+  .hero-title{
+    margin-bottom: 40px;
+    font-weight:400;
+    font-style: italic;
+    font-size: 32px;
+    color:var(--color-zinc-300);
+    text-align:center;
+    transition: opacity 600ms ease-out 800ms, transform 2400ms ease-out 800ms;
+  }
+
+  .hero-title.exit {
+    opacity: 0;
+    transform: translateY(-200px);
+  }
+  
+  /* eyes block */
+  .eyes{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width:120px;
+    height:120px;
+    display:grid; place-items:center;
+  }
+
+  /* animation transition */
+  #animation {
+    transition: opacity 3s ease-in-out;
+  }
+
+  /* input container */
+  .input-container {
+    position: fixed;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(900px, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* subtitle wrapper */
+  .subtitle-wrapper {
+    position: relative;
+    height: 120px;
+  }
+
+  /* subtitle area */
+  .subtitle-area {
+    height: 100%;
+    background: none;
+    border: none;
+    padding: 16px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .subtitle-area::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* scrims for subtitle area */
+  .subtitle-wrapper .top-scrim,
+  .subtitle-wrapper .bottom-scrim {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 30px;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .subtitle-wrapper .top-scrim {
+    top: 0;
+    background: linear-gradient(to bottom, rgba(9, 9, 11, 0.9), transparent);
+  }
+
+  .subtitle-wrapper .bottom-scrim {
+    bottom: 0;
+    background: linear-gradient(to top, rgba(9, 9, 11, 0.9), transparent);
+  }
+
+  .subtitle-text {
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--color-zinc-300);
+    margin: 0;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .subtitle-text.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .subtitle-text .message {
+    margin-bottom: 12px;
+    padding: 8px 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  .subtitle-text .message:last-child {
+    margin-bottom: 0;
+  }
+
+  .subtitle-text .message.thinking {
+    opacity: 0.7;
+    font-style: italic;
+  }
+
+  /* input bar */
+  .input-shell{
+    height: 200px;
+    background: color-mix(in srgb, var(--color-zinc-900) 60%, transparent);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:24px;
+    padding:16px;
+    display:flex; 
+    flex-direction: column;
+    gap:12px;
+    overflow: hidden;
+    position: relative;
+  }
+.input-shell:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    transition: 0.4s;
+}
+
+  .input-shell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle 300px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(24, 24, 27, 1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .input-shell:hover::before {
+    opacity: 1;
+  }
+
+  .input-shell:focus-within {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  
+  /* text area */
+  #chatInput{
+    flex: 1;
+    width: 100%;
+    background: none;
+    border: 0;
+    outline: none;
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+    resize:none; overflow:auto;
+    color:var(--color-zinc-50);
+    font:regular 14px/1.5 var(--font-sans);
+    position: relative;
+    z-index: 2;
+  }
+
+  #chatInput::placeholder{ color:var(--color-zinc-600); }
+  
+  /* send button container */
+  .send-container {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /* send button (icon-only) */
+  button.send{
+    padding: 8px;
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,.13);
+    /* background: var(--color-primary); */
+    background: none;
+    color:var(--color-zinc-500);
+    display:grid; place-items:center;
+    cursor:pointer;
+    transition: 0.2s;
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    opacity: 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  .input-shell:focus-within button.send {
+    opacity: 1;
+  }
+
+  .button-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* .button-content i {
+    width: 12px !important;
+    height: 12px !important;
+  } */
+
+  .button-content svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  button.send:hover{
+    /* background: var(--color-primary-hover); */
+    background: none;
+    color:var(--color-zinc-400);
+  }
+  button.send:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(20,62,226,.35); }
+  
+  /* icon size */
+  button.send svg{ width:24px; height:24px; }
+  

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- HERO -->
+    <div class="hero">
+      <h1 class="hero-title">How was your day today?</h1>
+
+      <!-- Eyes -->
+      <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.1/dist/dotlottie-wc.js" type="module"></script>
+      <dotlottie-wc id="animation" src="https://lottie.host/aafbfad5-966e-44d5-bcf2-4afc2694903c/5yGaNMxa3n.lottie"
+      style="width: 180px;height: 180px" autoplay loop></dotlottie-wc>
+
+      <!-- Input container -->
+      <div class="input-container">
+        <!-- Subtitle area for AI responses -->
+        <div class="subtitle-wrapper">
+          <div class="top-scrim"></div>
+          <div class="bottom-scrim"></div>
+          <div class="subtitle-area">
+            <p class="subtitle-text"></p>
+          </div>
+        </div>
+
+        <!-- Big input bar -->
+        <div class="input-shell">
+          <textarea id="chatInput"
+            placeholder="Tell me anything…"
+            rows="3"
+            autocomplete="off"></textarea>
+
+          <div class="send-container">
+            <button type="button" class="send" id="sendBtn" aria-label="Send">
+              <span class="button-content">
+                <i data-lucide="corner-down-right"></i>
+                ENTER
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lucide (icons) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- Your app logic -->
+    <script src="script.js"></script>
+  </body>
+</html>

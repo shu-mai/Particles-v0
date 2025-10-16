@@ -1,22 +1,38 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
-// Middleware
+// middleware
+app.use(helmet());
 app.use(cors());
-app.use(express.json());
-app.use(express.static('.'));
+app.use(express.json({ limit: '1mb' }));
+
+// api rate limit
+app.use('/api/', rateLimit({ windowMs: 60_000, max: 60 }));
+
+// serve only the public folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// routes
 
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
-    console.log('Received message:', message);
-    console.log('API Key exists:', !!process.env.OPENAI_API_KEY);
-    
+    const { message } = req.body || {};
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'message (string) is required' });
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'Server missing OPENAI_API_KEY' });
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -25,47 +41,35 @@ app.post('/api/chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: message
-          }
-        ],
+        messages: [{ role: 'user', content: message }],
         max_tokens: 150
       })
     });
 
-    console.log('OpenAI response status:', response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI error response:', errorText);
-      throw new Error(`API request failed: ${response.status} - ${errorText}`);
+      console.error('OpenAI API error:', response.status, errorText);
+      return res.status(response.status).json({ error: 'Upstream API error' });
     }
 
     const data = await response.json();
-    console.log('OpenAI response data:', data);
-    res.json({ response: data.choices[0].message.content });
+    const content = data?.choices?.[0]?.message?.content ?? '';
+    return res.json({ response: content });
 
   } catch (error) {
     console.error('Server error:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'Server is working!', 
-    apiKey: !!process.env.OPENAI_API_KEY,
-    apiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0,
-    apiKeyStart: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) : 'none'
-  });
+// Minimal health check (don’t reveal key details)
+app.get('/api/test', (_req, res) => {
+  res.json({ ok: true });
 });
 
-// Serve the main page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+// Serve index.html from /public
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {

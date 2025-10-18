@@ -9,12 +9,9 @@
   <body>
     <!-- HERO -->
     <div class="hero">
-      <h1 class="hero-title">How was your day today?</h1>
 
-      <!-- Eyes -->
-      <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.1/dist/dotlottie-wc.js" type="module"></script>
-      <dotlottie-wc id="animation" src="https://lottie.host/aafbfad5-966e-44d5-bcf2-4afc2694903c/5yGaNMxa3n.lottie"
-      style="width: 180px;height: 180px" autoplay loop></dotlottie-wc>
+      <!-- Spline 3D Animation (replaces Lottie eyes) -->
+      <canvas id="canvas3d" style="cursor: default; width: 1000px; height: 1000px;"></canvas>
 
       <!-- Input container -->
       <div class="input-container">
@@ -30,7 +27,7 @@
         <!-- Big input bar -->
         <div class="input-shell">
           <textarea id="chatInput"
-            placeholder="Tell me anything…"
+            placeholder=""
             rows="3"
             autocomplete="off"></textarea>
 
@@ -47,8 +44,15 @@
     </div>
 
     <!-- Lucide (icons) -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js" integrity="" crossorigin="anonymous"></script>
+
+    <!-- DOMPurify for XSS mitigation -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js" integrity="" crossorigin="anonymous"></script>
+    
+    <!-- Load particle system -->
+    <script type="module" src="spline-particles.js"></script>
+    
     <!-- Your app logic -->
-    <script src="script.js"></script>
+    <script defer src="script.js"></script>
   </body>
 </html>

@@ -107,6 +107,20 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.classList.toggle('enabled', hasText);
   }
 
+  // Check if subtitle area needs scrolling and update scrim visibility
+  function updateScrimVisibility() {
+    const subtitleWrapper = document.querySelector('.subtitle-wrapper');
+    const subtitleArea = document.querySelector('.subtitle-area');
+    
+    if (!subtitleWrapper || !subtitleArea) return;
+    
+    // Check if content overflows (scrollHeight > clientHeight)
+    const needsScrolling = subtitleArea.scrollHeight > subtitleArea.clientHeight;
+    
+    // Add or remove 'scrollable' class based on overflow
+    subtitleWrapper.classList.toggle('scrollable', needsScrolling);
+  }
+
   input.addEventListener('input', () => {
     autosize();
     updateButtonState();
@@ -114,6 +128,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   autosize();
   updateButtonState();
+
+  // Add window resize listener to update scrim visibility
+  window.addEventListener('resize', () => {
+    setTimeout(updateScrimVisibility, 100);
+  });
 
   // Enter to send
   input.addEventListener('keydown', (e) => {
@@ -175,6 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     subtitleText.scrollTop = subtitleText.scrollHeight;
+    
+    // Update scrim visibility after adding content
+    setTimeout(updateScrimVisibility, 100);
 
     try {
       console.log('📤 Sending message:', text);
@@ -252,6 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
       messageDiv.className = 'message';
       subtitleText.appendChild(messageDiv);
       
+      // Update scrim visibility after adding new message
+      setTimeout(updateScrimVisibility, 100);
+      
       // Simple markdown parser
       function parseMarkdownSafe(text) {
         const escaped = text
@@ -301,11 +326,19 @@ document.addEventListener('DOMContentLoaded', () => {
             subtitleArea.scrollTop = subtitleArea.scrollHeight;
           }
           
+          // Update scrim visibility during typing (every 20 characters to avoid too many calls)
+          if (i % 20 === 0) {
+            updateScrimVisibility();
+          }
+          
           currentTypingAnimation = setTimeout(typeWriter, 15);
         } else {
           // Typing finished
           isTyping = false;
           currentTypingAnimation = null;
+          
+          // Final update of scrim visibility after typing is complete
+          updateScrimVisibility();
           
           // Return to appropriate state (unless tracing)
           if (window.SplineParticles) {

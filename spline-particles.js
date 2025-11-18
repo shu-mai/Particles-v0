@@ -24,9 +24,23 @@ function initializeParticleSystem(THREE, canvas) {
 
 	// Renderer
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-	renderer.setSize(1200, 1200);
 	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setClearColor(0x000000, 0);
+	
+	// Responsive sizing
+	function updateSize() {
+		const width = canvas.clientWidth;
+		const height = canvas.clientHeight;
+		renderer.setSize(width, height);
+		camera.aspect = width / height;  // Maintains aspect ratio
+		camera.updateProjectionMatrix();
+	}
+	
+	// Initial size
+	updateSize();
+	
+	// Update on resize
+	window.addEventListener('resize', updateSize);
 
 	// Config & state
 	const baseConfig = {
@@ -44,9 +58,9 @@ function initializeParticleSystem(THREE, canvas) {
 	const particleStates = {
 		unfocused: { ...baseConfig },
 		focused: { ...baseConfig, speed: 2, gravity: 0.05, sphereRadius: 60, colliderRadius: 90, noise: { scale: 20, variation: 8, seed: 100, smallScale: 0.2, largeScale: 0.1, smallStrength: 0.3, largeStrength: 0.2 } },
-		thinking: { ...baseConfig, speed: 8, opacity: 0.8, gravity: 0.0, sphereRadius: 90, noise: { scale: 35, variation: 20, seed: 100, smallScale: 0.6, largeScale: 0.4, smallStrength: 0.7, largeStrength: 0.5 } },
+		thinking: { ...baseConfig, speed: 5, opacity: 0.8, gravity: 0.0, sphereRadius: 80, noise: { scale: 25, variation: 15, seed: 100, smallScale: 0.4, largeScale: 0.3, smallStrength: 0.5, largeStrength: 0.3 } },
 		typing: { ...baseConfig, speed: 3, gravity: 0.05, sphereRadius: 80, noise: { scale: 25, variation: 10, seed: 100, smallScale: 0.3, largeScale: 0.2, smallStrength: 0.3, largeStrength: 0.2 } },
-		tracing: { ...baseConfig, count: 3000, size: 2.0, speed: 5, lifetime: 12, colorA: 0xff6b35, gravity: 0.0, noise: { scale: 15, variation: 5, seed: 100, smallScale: 0.2, largeScale: 0.1, smallStrength: 0.2, largeStrength: 0.1 } }
+		tracing: { ...baseConfig, count: 3000, size: 1.5, speed: 3, lifetime: 12, colorA: 0xff6b35, gravity: 0.0, sphereRadius: 80, colliderRadius: 120, noise: { scale: 15, variation: 5, seed: 100, smallScale: 0.2, largeScale: 0.1, smallStrength: 0.2, largeStrength: 0.1 } }
 	};
 	let currentState = 'unfocused';
 	let particleConfig = { ...particleStates[currentState] };
@@ -103,9 +117,11 @@ function initializeParticleSystem(THREE, canvas) {
 		const z = radius * Math.cos(phi);
 		// Assign a trace target immediately if tracing is active
 		let initialTarget = null;
+		let initialPointIndex = undefined;
 		if (isTracing && tracePoints.length > 0) {
-			const rp = tracePoints[Math.floor(Math.random() * tracePoints.length)];
-			initialTarget = { ...rp };
+			const idx = Math.floor(Math.random() * tracePoints.length);
+			initialTarget = { ...tracePoints[idx] };
+			initialPointIndex = idx;
 		}
 		return {
 			position: new THREE.Vector3(x, y, z),
@@ -117,6 +133,7 @@ function initializeParticleSystem(THREE, canvas) {
 			color: new THREE.Color(particleConfig.colorA),
 			active: true,
 			traceTarget: initialTarget,
+			tracePointIndex: initialPointIndex,
 			noiseOffset: { x: Math.random() * 1000, y: Math.random() * 1000, z: Math.random() * 1000 }
 		};
 	}
@@ -160,6 +177,7 @@ function initializeParticleSystem(THREE, canvas) {
 		for (let i = 0; i < particles.length; i++) {
 			if (!particles[i] || !particles[i].active) continue;
 			particles[i].traceTarget = { ...tracePoints[pointIndex] };
+			particles[i].tracePointIndex = pointIndex; // Track which point this particle is on
 			pointIndex = (pointIndex + 1) % tracePoints.length; // cycle so all get targets
 		}
 	}
@@ -191,16 +209,40 @@ function initializeParticleSystem(THREE, canvas) {
 				const dy = p.traceTarget.y - p.position.y;
 				const dz = p.traceTarget.z - p.position.z;
 				const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-				if (dist > 2) {
-					const pull = 0.6; // stronger attraction
+				
+				// When particle reaches target, move to next point in sequence
+				if (dist < 0.5) {
+					// Use stored point index for efficiency
+					const currentIdx = p.tracePointIndex !== undefined ? p.tracePointIndex : 
+						tracePoints.findIndex(pt => 
+							Math.abs(pt.x - p.traceTarget.x) < 0.1 && 
+							Math.abs(pt.y - p.traceTarget.y) < 0.1
+						);
+					if (currentIdx >= 0 && currentIdx < tracePoints.length - 1) {
+						// Move to next point in sequence
+						p.tracePointIndex = currentIdx + 1;
+						p.traceTarget = { ...tracePoints[p.tracePointIndex] };
+					} else if (currentIdx === tracePoints.length - 1) {
+						// Loop back to start for continuous tracing
+						p.tracePointIndex = 0;
+						p.traceTarget = { ...tracePoints[0] };
+					}
+				}
+				
+				if (dist > 1) {
+					// Pull toward target
+					const pull = 0.6; // back to original value
 					p.velocity.x = dx * pull;
 					p.velocity.y = dy * pull;
 					p.velocity.z = dz * pull;
 				} else {
+					// When close, slow down
 					p.velocity.multiplyScalar(0.5);
 				}
-				p.velocity.multiplyScalar(0.95);
-				p.position.x += p.velocity.x * dt * 3; // move faster while tracing
+				// Normal velocity damping
+				p.velocity.multiplyScalar(0.95); // back to original
+				// Normal movement speed
+				p.position.x += p.velocity.x * dt * 3; // back to original
 				p.position.y += p.velocity.y * dt * 3;
 				p.position.z += p.velocity.z * dt * 3;
 			} else {
@@ -291,8 +333,15 @@ function initializeParticleSystem(THREE, canvas) {
 				if (!imageData) { console.error('No image data'); resolve([]); return; }
 				const img = new Image();
 				if (opts.imageMime === 'image/svg+xml') {
-					// Inline SVG data URL
-					img.src = `data:image/svg+xml;base64,${imageData}`;
+					// For SVG, decode base64 first, then use URL encoding for data URL
+					try {
+						const svgString = atob(imageData);
+						img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+					} catch (e) {
+						console.error('SVG decode error:', e);
+						// Fallback to base64
+						img.src = `data:image/svg+xml;base64,${imageData}`;
+					}
 				} else {
 					img.src = `data:image/png;base64,${imageData}`;
 				}
@@ -300,16 +349,20 @@ function initializeParticleSystem(THREE, canvas) {
 					try {
 						const canvas = document.createElement('canvas');
 						const ctx = canvas.getContext('2d');
-						const maxSize = opts.maxSize || 500;
+						// Use much larger canvas for maximum detail (increased from 500 to 1000)
+						const maxSize = opts.maxSize || 1000;
 						const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
 						canvas.width = img.width * scale; canvas.height = img.height * scale;
 						ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 						const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-						const low = opts.lowThreshold ?? 20; const high = opts.highThreshold ?? 60; const blurSigma = opts.blurSigma ?? 1.2;
+						// Very sensitive thresholds for maximum edge detection
+						// Minimal blur to preserve all edges
+						const low = opts.lowThreshold ?? 5; const high = opts.highThreshold ?? 20; const blurSigma = opts.blurSigma ?? 0.5;
 						const edges = detectEdgesAdvanced(imgData, { low, high, blurSigma });
 						let points = edges.map(e => ({ x: (e.x / canvas.width - 0.5) * 220, y: -(e.y / canvas.height - 0.5) * 220, z: 0 }));
-						// Remove isolated outliers and tiny clusters (keeps outline tight)
-						points = filterOutliers(points, 8, 3, 1800);
+						// Minimal filtering - keep almost all points for complete tracing
+						// Increased max points significantly for maximum coverage
+						points = filterOutliers(points, 4, 1, 5000);
 						resolve(points);
 					} catch (err) { console.error('Process error:', err); resolve([]); }
 				};
@@ -327,22 +380,18 @@ function initializeParticleSystem(THREE, canvas) {
 		const { mag, dir } = sobel(blurred, width, height);
 		const nms = nonMaxSuppression(mag, dir, width, height);
 		const strong = hysteresis(nms, width, height, low, high);
-		const cell = 3; const edges = [];
+		// Reduced cell size from 3 to 1 for denser point sampling (no gaps)
+		const cell = 1; const edges = [];
 		for (let y = 1; y < height - 1; y += cell) {
 			for (let x = 1; x < width - 1; x += cell) {
-				let found = false;
-				for (let yy = 0; yy < cell && !found; yy++) {
-					for (let xx = 0; xx < cell && !found; xx++) {
-						if (strong[(y+yy)*width + (x+xx)]) {
-							edges.push({ x: x+xx, y: y+yy, strength: nms[(y+yy)*width + (x+xx)] });
-							found = true;
-						}
-					}
+				if (strong[y*width + x]) {
+					edges.push({ x: x, y: y, strength: nms[y*width + x] });
 				}
 			}
 		}
 		edges.sort((a,b)=>b.strength-a.strength);
-		return edges.slice(0, Math.min(edges.length, 1800));
+		// Return all edges - no limit for maximum coverage
+		return edges;
 	}
 
 	function gaussianBlur(src, width, height, sigma) {
@@ -442,9 +491,11 @@ function initializeParticleSystem(THREE, canvas) {
 			console.log('🎨 Starting tracing...');
 			const points = await processImageForTracing(imageData, opts);
 			if (points.length === 0) { console.warn('No trace points'); return; }
-			const maxPoints = 800;
+			// Increased max points significantly to prevent gaps
+			const maxPoints = 5000;
 			if (points.length > maxPoints) {
-				const step = Math.floor(points.length / maxPoints);
+				// Use smarter downsampling - keep every Nth point but preserve continuity
+				const step = Math.ceil(points.length / maxPoints);
 				tracePoints = points.filter((_, i) => i % step === 0).slice(0, maxPoints);
 			} else tracePoints = points;
 			isTracing = true; assignTraceTargets(); setParticleState('tracing');

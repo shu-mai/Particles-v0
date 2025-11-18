@@ -5,14 +5,14 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const OpenAI = require('openai');
+const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3003;
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+// Initialize Gemini client
+const client = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY
 });
 
 // middleware
@@ -56,7 +56,7 @@ app.use(helmet.contentSecurityPolicy({
     ],
     "connect-src": [
       "'self'",
-      "https://api.openai.com",
+      "https://generativelanguage.googleapis.com",
       "https://cdn.jsdelivr.net",
       "https://unpkg.com",
       "https://cdn.skypack.dev",
@@ -100,8 +100,8 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'message (string) is required' });
     }
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: 'Server missing OPENAI_API_KEY' });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'Server missing GEMINI_API_KEY' });
     }
 
     // Check if this is an image generation request
@@ -114,89 +114,79 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     console.log(`🎨 Is image request: ${isImageRequest}`);
 
     if (isImageRequest) {
-      console.log('🎨 Starting image generation with DALL-E 3...');
+      console.log('🎨 Starting image generation with Gemini...');
       
       try {
-        // Simple-shape override: generate deterministic SVG for basic shapes
-        const simpleShapes = ['heart','star','circle','triangle','square','hexagon'];
-        const lower = message.toLowerCase();
-        const matched = simpleShapes.find(s => lower.includes(s));
-        if (matched) {
-          console.log(`🧩 Using procedural SVG for shape: ${matched}`);
-          const svg = buildShapeSVG(matched);
-          const base64 = Buffer.from(svg, 'utf8').toString('base64');
+        // Use Gemini's image generation (gemini-2.5-flash-image) as primary method
+        // This produces better quality results than SVG generation
+        const subject = message.trim();
+        const imagePrompt = `Clean vector line art of ${subject}, minimalistic black outline, no fill, smooth continuous lines, uniform line weight, black background, white lines, SVG style, professional design, no shading, high contrast, sharp edges, symmetrical composition.`;
+        
+        try {
+          const imageModel = process.env.IMAGE_MODEL || 'gemini-2.5-flash-image';
+          console.log(`🎨 Generating image with ${imageModel}...`);
+          
+          const imgResponse = await client.models.generateContent({
+            model: imageModel,
+            contents: imagePrompt,
+            config: {
+              responseModalities: ['Image']
+            }
+          });
+          
+          // Extract image data from response parts
+          // Check different possible response structures
+          let imageBase64 = null;
+          let parts = null;
+          
+          // Try different response structures
+          if (Array.isArray(imgResponse.parts)) {
+            parts = imgResponse.parts;
+          } else if (imgResponse.response && Array.isArray(imgResponse.response.parts)) {
+            parts = imgResponse.response.parts;
+          } else if (imgResponse.candidates && imgResponse.candidates[0] && Array.isArray(imgResponse.candidates[0].content?.parts)) {
+            parts = imgResponse.candidates[0].content.parts;
+          } else {
+            // Log the response structure for debugging
+            console.error('Unknown response structure:', Object.keys(imgResponse));
+            console.error('Response type:', typeof imgResponse);
+            throw new Error('Unknown response structure from Gemini API');
+          }
+          
+          // Extract image data from parts
+          for (const part of parts) {
+            if (part.inlineData && part.inlineData.data) {
+              imageBase64 = part.inlineData.data;
+              break;
+            } else if (part.inline_data && part.inline_data.data) {
+              // Alternative naming
+              imageBase64 = part.inline_data.data;
+              break;
+            }
+          }
+          
+          if (!imageBase64) {
+            // Log the response structure for debugging
+            console.error('No image data found. Response structure:', JSON.stringify(imgResponse, null, 2).substring(0, 1000));
+            throw new Error('No image data in response');
+          }
+          
+          console.log(`✅ Image generated, length: ${imageBase64.length}`);
+          
           return res.json({
             response: "I've created an image for you! The particles will now trace its outline.",
-            imageData: base64,
-            imageMime: 'image/svg+xml',
+            imageData: imageBase64,
+            imageMime: 'image/png',
             isImage: true
           });
-        }
-
-        // Strong intermediary: ask an LLM to synthesize a clean SVG outline from the prompt
-        // This avoids photoreal detail and stylization entirely.
-        try {
-          const rawSvg = await generateSvgOutlineWithLLM(openai, message);
-          const svg = rawSvg ? sanitizeSvg(rawSvg) : '';
-          if (svg && svg.includes('<svg')) {
-            console.log('🧠 Using LLM-generated SVG outline');
-            const base64 = Buffer.from(svg, 'utf8').toString('base64');
-            return res.json({
-              response: "I've created an image for you! The particles will now trace its outline.",
-              imageData: base64,
-              imageMime: 'image/svg+xml',
-              isImage: true
-            });
-          }
-        } catch (svgErr) {
-          console.warn('SVG outline generation failed; falling back to DALL·E:', svgErr.message);
-        }
-
-        // Steer generation toward a clean outline (reduces specks/outliers)
-        const outlineGuidance = `\nStyle: minimalist, single continuous outline of the subject. Solid black background. White stroke only. No shading, no fill, no texture, no background elements, no sparkles, no scattered dots, no text, no watermark. Centered, high contrast, clear silhouette.`;
-        const improvedPrompt = `${message.trim()}\n${outlineGuidance}`;
-        
-        // Use configurable model, default to a non-DALL·E option; fallback to DALL·E if needed
-        const preferredModel = process.env.IMAGE_MODEL || 'gpt-image-1-mini';
-        let imgGenResponse;
-        try {
-          imgGenResponse = await openai.images.generate({
-            model: preferredModel,
-            prompt: improvedPrompt,
-            n: 1,
-            size: "1024x1024",
-            quality: "standard"
+          
+        } catch (imgGenError) {
+          console.error('❌ Gemini image generation failed:', imgGenError);
+          return res.status(500).json({ 
+            error: 'Image generation failed',
+            details: imgGenError.message || 'SVG outline generation was not successful. Please try again or rephrase your request.'
           });
-          console.log(`✅ Image generated with ${preferredModel}`);
-        } catch (primaryErr) {
-          console.warn(`⚠️ ${preferredModel} failed, falling back to dall-e-3:`, primaryErr.message);
-          imgGenResponse = await openai.images.generate({
-            model: 'dall-e-3',
-            prompt: improvedPrompt,
-            n: 1,
-            size: "1024x1024",
-            quality: "standard"
-          });
-          console.log('✅ Image generated with dall-e-3 (fallback)');
         }
-
-        const imageUrl = imgGenResponse.data[0].url;
-        console.log('✅ DALL-E 3 image generated:', imageUrl);
-        
-        // Download and convert to base64
-        console.log('📥 Downloading image...');
-        const imageResponse = await fetch(imageUrl);
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const imageBase64 = Buffer.from(imageBuffer).toString('base64');
-        
-        console.log(`✅ Image converted to base64, length: ${imageBase64.length}`);
-        
-        return res.json({
-          response: "I've created an image for you! The particles will now trace its outline.",
-          imageData: imageBase64,
-          imageMime: 'image/png',
-          isImage: true
-        });
         
       } catch (imageError) {
         console.error('❌ Image generation failed:', imageError);
@@ -212,13 +202,13 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
       console.log('💬 Using regular chat completion...');
       
       try {
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [{ role: 'user', content: message }],
-          max_tokens: 4000
+        const chatModel = process.env.CHAT_MODEL || 'gemini-2.0-flash-exp';
+        const response = await client.models.generateContent({
+          model: chatModel,
+          contents: message
         });
 
-        const content = completion.choices[0].message.content;
+        const content = response.text;
         
         console.log('✅ Chat response received');
         
@@ -254,46 +244,74 @@ app.get('/', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`🎨 Image generation: Responses API (gpt-5)`);
-  console.log(`💬 Text chat: gpt-4o`);
-  console.log(`🔑 API Key: ${process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing'}`);
+  console.log(`🎨 Image generation: Gemini (${process.env.IMAGE_MODEL || 'gemini-2.5-flash-image'})`);
+  console.log(`💬 Text chat: ${process.env.CHAT_MODEL || 'gemini-2.0-flash-exp'}`);
+  console.log(`🔑 API Key: ${process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing'}`);
 });
 
 // --- helpers ---
-async function generateSvgOutlineWithLLM(openai, userPrompt) {
+async function generateSvgOutlineWithLLM(client, userPrompt) {
   // Prefer a powerful model; allow env override
-  const model = process.env.OUTLINE_MODEL || 'gpt-5';
+  // Use IMAGE_MODEL for SVG generation (supports nano banana model)
+  const model = process.env.IMAGE_MODEL || process.env.OUTLINE_MODEL || 'gemini-2.0-flash-exp';
   const system = `You generate minimal SVG outlines suitable for particle tracing.
 Rules:
 - Output ONLY a self-contained <svg> element. No markdown, no explanation.
 - Size: width=1024 height=1024 viewBox="0 0 1024 1024".
-- Background: solid black rectangle.
+- Background: solid black rectangle (#000000).
 - Foreground: white stroke (#ffffff), stroke-width=14, no fill.
 - Use one or a few <path>/<circle>/<rect>/<polygon> elements, centered and scaled to fit.
-- No text, watermark, or decorative specks.
-- Favor a single continuous path when reasonable.
+- CRITICAL: Only the main outline shape. NO scattered dots, NO isolated pixels, NO specks, NO decorative elements, NO background elements, NO text, NO watermark.
+- The outline must be a single continuous path or a few connected paths forming the main shape.
+- Think vector illustration - clean lines only, no noise, no artifacts.
 `;
-  const prompt = `Create a clean outline-only SVG for: ${userPrompt}`;
+  const prompt = `Create a clean vector-style outline-only SVG for: ${userPrompt}. The outline must be a single continuous shape with no stray dots, specks, or isolated pixels. Only the main subject outline.`;
   try {
-    const resp = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.2,
-      max_tokens: 1800
+    const fullPrompt = `${system}\n\n${prompt}`;
+    const resp = await client.models.generateContent({
+      model: model,
+      contents: fullPrompt,
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 1800
+      }
     });
-    const svg = resp.choices?.[0]?.message?.content?.trim() || '';
+    let svg = resp.text.trim();
     if (!svg.includes('<svg')) return '';
+    
+    // Extract only the SVG content (remove any text before <svg>)
+    const svgStart = svg.indexOf('<svg');
+    if (svgStart > 0) {
+      svg = svg.substring(svgStart);
+    }
+    
+    // Find the closing </svg> tag
+    const svgEnd = svg.lastIndexOf('</svg>');
+    if (svgEnd > 0) {
+      svg = svg.substring(0, svgEnd + 6); // +6 for '</svg>'
+    }
+    
     // Normalize critical attributes and stroke styles
-    return svg
+    // First, remove existing problematic attributes to avoid duplicates
+    svg = svg
+      .replace(/\s+width="[^"]*"/gi, '')
+      .replace(/\s+height="[^"]*"/gi, '')
+      .replace(/\s+viewBox="[^"]*"/gi, '')
+      .replace(/xmlns="[^"]*"/gi, '');
+    
+    // Now add the correct attributes
+    svg = svg
       .replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"')
       .replace(/fill="[^"]*"/g, 'fill="none"')
       .replace(/stroke="[^"]*"/g, 'stroke="#ffffff"')
-      .replace(/stroke-width="[^"]*"/g, 'stroke-width="14"')
-      // ensure black background
-      .replace(/<svg([^>]*)>/, '<svg$1><rect width="100%" height="100%" fill="#000000"/>');
+      .replace(/stroke-width="[^"]*"/g, 'stroke-width="14"');
+    
+    // Ensure black background (only if not already present)
+    if (!svg.includes('<rect') || !svg.includes('fill="#000000"')) {
+      svg = svg.replace(/<svg([^>]*)>/, '<svg$1><rect width="100%" height="100%" fill="#000000"/>');
+    }
+    
+    return svg;
   } catch (_e) {
     return '';
   }

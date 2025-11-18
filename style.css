@@ -13,7 +13,14 @@
     --color-zinc-700:#3F3F46;
     --color-zinc-800:#27272A;
     --color-zinc-900:#18181B;
+    --color-zinc-910: #0E0E10;
+    --color-zinc-920: #0C0C0E;
     --color-zinc-950:#09090B;
+    
+    --color-neutral-800: #262626;
+    --color-neutral-900: #171717;
+    --color-neutral-910: #121212;
+  
   
     --color-primary:#143EE2;
     --color-primary-hover:#2750EC;
@@ -23,24 +30,28 @@
   
   /* base */
   *{ box-sizing:border-box; }
-  html,body{ height:100%; }
+  html, body { 
+    height: 100%; 
+    overflow: hidden;           /* Prevents page scrolling */
+  }
   body{
     margin:0;
     font-family:var(--font-sans);
-    background:var(--color-zinc-950);
+    background:var(--color-zinc-910);
     color:var(--color-zinc-50);
   }
   
   /* hero layout */
   .hero{
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:40px;
-    padding:20px;
-    position:relative;
+    min-height: 100vh;          /* Full viewport height */
+    height: 100vh;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;        /* Centers children horizontally */
+    justify-content: flex-start; /* Aligns to top */
+    overflow: hidden;           /* Prevents scrolling */
+    position: relative;
   }
   
   .hero-title{
@@ -67,7 +78,7 @@
   /* input container */
   .input-container {
     position: fixed;
-    bottom: 48px;
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     width: min(900px, 92vw);
@@ -126,6 +137,14 @@
     height: 30px;
     pointer-events: none;
     z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Show scrims when content overflows */
+  .subtitle-wrapper.scrollable .top-scrim,
+  .subtitle-wrapper.scrollable .bottom-scrim {
+    opacity: 1;
   }
 
   .subtitle-wrapper .top-scrim {
@@ -247,7 +266,7 @@
 
   /* input bar */
   .input-shell{
-    height: 200px;
+    height: 150px;
     background: color-mix(in srgb, var(--color-zinc-900) 60%, transparent);
     border:1px solid rgba(255,255,255,.08);
     border-radius:24px;
@@ -368,13 +387,17 @@
   button.send svg{ width:24px; height:24px; }
   
   #canvas3d {
-    width: 1000px;
-    height: 1000px;
+    width: min(1000px, 90vw, 90vh);
+    height: min(1000px, 90vw, 90vh);
+    max-width: 100vw;
+    max-height: 100vh;
     display: block;
-    margin: 0 auto;
-    pointer-events: auto;
-    cursor: default;
+    margin: 0 auto;              /* Centers horizontally */
+    margin-top: clamp(-100px, -10vh, -150px);  /* Vertical positioning */
     position: relative;
     z-index: 1;
-    transform: translateY(-150px);
+    transform: translateY(0);
+    object-fit: contain;
+    pointer-events: auto;
+    cursor: default;
   }

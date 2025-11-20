@@ -58,13 +58,15 @@ function initializeParticleSystem(THREE, canvas) {
 	const particleStates = {
 		unfocused: { ...baseConfig },
 		focused: { ...baseConfig, speed: 2, gravity: 0.05, sphereRadius: 60, colliderRadius: 90, noise: { scale: 20, variation: 8, seed: 100, smallScale: 0.2, largeScale: 0.1, smallStrength: 0.3, largeStrength: 0.2 } },
-		thinking: { ...baseConfig, speed: 5, opacity: 0.8, gravity: 0.0, sphereRadius: 80, noise: { scale: 25, variation: 15, seed: 100, smallScale: 0.4, largeScale: 0.3, smallStrength: 0.5, largeStrength: 0.3 } },
+		thinking: { ...baseConfig, speed: 2, opacity: 0.8, gravity: 0.0, sphereRadius: 80, noise: { scale: 25, variation: 15, seed: 100, smallScale: 0.4, largeScale: 0.3, smallStrength: 0.5, largeStrength: 0.3 } },
 		typing: { ...baseConfig, speed: 3, gravity: 0.05, sphereRadius: 80, noise: { scale: 25, variation: 10, seed: 100, smallScale: 0.3, largeScale: 0.2, smallStrength: 0.3, largeStrength: 0.2 } },
 		tracing: { ...baseConfig, count: 3000, size: 1.5, speed: 3, lifetime: 12, colorA: 0xff6b35, gravity: 0.0, sphereRadius: 80, colliderRadius: 120, noise: { scale: 15, variation: 5, seed: 100, smallScale: 0.2, largeScale: 0.1, smallStrength: 0.2, largeStrength: 0.1 } }
 	};
 	let currentState = 'unfocused';
 	let particleConfig = { ...particleStates[currentState] };
 	let targetConfig = { ...particleConfig };
+	let isUserTyping = false;
+	let characterCount = 0;
 
 	// Geometry & buffers
 	const maxParticles = 12000;
@@ -108,21 +110,59 @@ function initializeParticleSystem(THREE, canvas) {
 
 	// Particles store
 	const particles = [];
-	function createParticle() {
-		const theta = Math.random() * Math.PI * 2;
-		const phi = Math.acos(2 * Math.random() - 1);
-		const radius = particleConfig.sphereRadius + (Math.random() - 0.5) * 15;
-		const x = radius * Math.sin(phi) * Math.cos(theta);
-		const y = radius * Math.sin(phi) * Math.sin(theta);
-		const z = radius * Math.cos(phi);
-		// Assign a trace target immediately if tracing is active
+	function createParticle(aroundPoint = null) {
+		let x, y, z;
 		let initialTarget = null;
 		let initialPointIndex = undefined;
-		if (isTracing && tracePoints.length > 0) {
-			const idx = Math.floor(Math.random() * tracePoints.length);
-			initialTarget = { ...tracePoints[idx] };
-			initialPointIndex = idx;
+		
+		if (aroundPoint && isTransitioning && previousTracePoints.length > 0) {
+			// Create particle near existing trace point with random offset (transition)
+			const offset = 5 + Math.random() * 10; // 5-15 unit radius around point
+			const theta = Math.random() * Math.PI * 2;
+			const phi = Math.acos(2 * Math.random() - 1);
+			x = aroundPoint.x + offset * Math.sin(phi) * Math.cos(theta);
+			y = aroundPoint.y + offset * Math.sin(phi) * Math.sin(theta);
+			z = aroundPoint.z + offset * Math.cos(phi);
+			// Assign to follow the point it was created around
+			const pointIdx = previousTracePoints.findIndex(pt => 
+				Math.abs(pt.x - aroundPoint.x) < 0.1 && Math.abs(pt.y - aroundPoint.y) < 0.1
+			);
+			if (pointIdx >= 0) {
+				initialTarget = { ...previousTracePoints[pointIdx] };
+				initialPointIndex = pointIdx;
+			}
+		} else if (aroundPoint && isTracing && tracePoints.length > 0) {
+			// Create particle near trace point when typing during tracing
+			const offset = 3 + Math.random() * 8; // 3-11 unit radius around trace point
+			const theta = Math.random() * Math.PI * 2;
+			const phi = Math.acos(2 * Math.random() - 1);
+			x = aroundPoint.x + offset * Math.sin(phi) * Math.cos(theta);
+			y = aroundPoint.y + offset * Math.sin(phi) * Math.sin(theta);
+			z = aroundPoint.z + offset * Math.cos(phi);
+			// Assign to follow the trace point it was created around
+			const pointIdx = tracePoints.findIndex(pt => 
+				Math.abs(pt.x - aroundPoint.x) < 0.1 && Math.abs(pt.y - aroundPoint.y) < 0.1
+			);
+			if (pointIdx >= 0) {
+				initialTarget = { ...tracePoints[pointIdx] };
+				initialPointIndex = pointIdx;
+			}
+		} else {
+			// Normal particle creation
+			const theta = Math.random() * Math.PI * 2;
+			const phi = Math.acos(2 * Math.random() - 1);
+			const radius = particleConfig.sphereRadius + (Math.random() - 0.5) * 15;
+			x = radius * Math.sin(phi) * Math.cos(theta);
+			y = radius * Math.sin(phi) * Math.sin(theta);
+			z = radius * Math.cos(phi);
+			// Assign a trace target immediately if tracing is active
+			if (isTracing && tracePoints.length > 0) {
+				const idx = Math.floor(Math.random() * tracePoints.length);
+				initialTarget = { ...tracePoints[idx] };
+				initialPointIndex = idx;
+			}
 		}
+		
 		return {
 			position: new THREE.Vector3(x, y, z),
 			velocity: new THREE.Vector3((Math.random()-0.5)*particleConfig.speed*0.1,(Math.random()-0.5)*particleConfig.speed*0.1,(Math.random()-0.5)*particleConfig.speed*0.1),
@@ -138,13 +178,81 @@ function initializeParticleSystem(THREE, canvas) {
 		};
 	}
 	function emitParticles(dt) {
-		const emitRate = particleConfig.count / particleConfig.lifetime;
+		// During transition, emit more particles rapidly around existing trace points
+		if (isTransitioning && previousTracePoints.length > 0) {
+			const transitionDuration = 1.0; // 1 second transition
+			const elapsed = (performance.now() - transitionStartTime) / 1000;
+			if (elapsed < transitionDuration) {
+				// Rapid burst: emit 10-20 particles per frame during transition
+				const burstCount = Math.floor(15 * dt * 60); // Scale with frame rate
+				for (let i = 0; i < burstCount; i++) {
+					if (particles.length < maxParticles) {
+						const randomPoint = previousTracePoints[Math.floor(Math.random() * previousTracePoints.length)];
+						particles.push(createParticle(randomPoint));
+					} else {
+						const idx = particles.findIndex(p => !p.active);
+						if (idx !== -1) {
+							const randomPoint = previousTracePoints[Math.floor(Math.random() * previousTracePoints.length)];
+							particles[idx] = createParticle(randomPoint);
+						}
+					}
+				}
+				return; // Skip normal emission during transition
+			} else {
+				// Transition complete, switch to new trace
+				console.log('✅ Transition complete, switching to new trace');
+				isTransitioning = false;
+				previousTracePoints = [];
+				assignTraceTargets(); // Assign all particles to new trace points
+				setParticleState('tracing'); // Ensure state is set
+			}
+		}
+		
+		// Normal particle emission (with boost when user is typing)
+		let emitRate = particleConfig.count / particleConfig.lifetime;
+		
+		// Scale emission rate based on character count (linear scaling)
+		// Base rate when characterCount = 0, increases with each character
+		if (isUserTyping && currentState !== 'thinking') {
+			// Character count multiplier: 1.0 (base) + 0.05 per character, capped at 3.0x
+			const charMultiplier = Math.min(1.0 + characterCount * 0.08, 5.0);
+			emitRate *= charMultiplier;
+		}
+		
 		const n = Math.floor(emitRate * dt);
-		for (let i = 0; i < n; i++) {
-			if (particles.length < maxParticles) particles.push(createParticle());
-			else {
-				const idx = particles.findIndex(p => !p.active);
-				if (idx !== -1) particles[idx] = createParticle();
+		
+		// When typing during tracing, create particles around trace points
+		if (isUserTyping && isTracing && tracePoints.length > 0) {
+			// Create extra particles from trace points
+			const extraParticles = Math.floor(n * 0.6); // 60% of emission from trace points
+			for (let i = 0; i < extraParticles; i++) {
+				if (particles.length < maxParticles) {
+					const randomPoint = tracePoints[Math.floor(Math.random() * tracePoints.length)];
+					particles.push(createParticle(randomPoint));
+				} else {
+					const idx = particles.findIndex(p => !p.active);
+					if (idx !== -1) {
+						const randomPoint = tracePoints[Math.floor(Math.random() * tracePoints.length)];
+						particles[idx] = createParticle(randomPoint);
+					}
+				}
+			}
+			// Remaining particles created normally
+			for (let i = 0; i < n - extraParticles; i++) {
+				if (particles.length < maxParticles) particles.push(createParticle());
+				else {
+					const idx = particles.findIndex(p => !p.active);
+					if (idx !== -1) particles[idx] = createParticle();
+				}
+			}
+		} else {
+			// Normal emission
+			for (let i = 0; i < n; i++) {
+				if (particles.length < maxParticles) particles.push(createParticle());
+				else {
+					const idx = particles.findIndex(p => !p.active);
+					if (idx !== -1) particles[idx] = createParticle();
+				}
 			}
 		}
 	}
@@ -170,6 +278,9 @@ function initializeParticleSystem(THREE, canvas) {
 	let isTracing = false;
 	let tracePoints = [];
 	let tracingTimeout = null;
+	let isTransitioning = false;
+	let previousTracePoints = [];
+	let transitionStartTime = 0;
 
 	function assignTraceTargets() {
 		if (tracePoints.length === 0) return;
@@ -205,27 +316,34 @@ function initializeParticleSystem(THREE, canvas) {
 			p.velocity.y -= particleConfig.gravity * 0.05;
 
 			if (isTracing && p.traceTarget) {
+				// During transition, particles may be following previous trace points
+				// They'll naturally migrate to new targets when assignTraceTargets is called
 				const dx = p.traceTarget.x - p.position.x;
 				const dy = p.traceTarget.y - p.position.y;
 				const dz = p.traceTarget.z - p.position.z;
 				const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 				
+				// Determine which trace point array to use
+				const activeTracePoints = isTransitioning && previousTracePoints.length > 0 && 
+					(performance.now() - transitionStartTime) / 1000 < 1.0 
+					? previousTracePoints : tracePoints;
+				
 				// When particle reaches target, move to next point in sequence
 				if (dist < 0.5) {
 					// Use stored point index for efficiency
 					const currentIdx = p.tracePointIndex !== undefined ? p.tracePointIndex : 
-						tracePoints.findIndex(pt => 
+						activeTracePoints.findIndex(pt => 
 							Math.abs(pt.x - p.traceTarget.x) < 0.1 && 
 							Math.abs(pt.y - p.traceTarget.y) < 0.1
 						);
-					if (currentIdx >= 0 && currentIdx < tracePoints.length - 1) {
+					if (currentIdx >= 0 && currentIdx < activeTracePoints.length - 1) {
 						// Move to next point in sequence
 						p.tracePointIndex = currentIdx + 1;
-						p.traceTarget = { ...tracePoints[p.tracePointIndex] };
-					} else if (currentIdx === tracePoints.length - 1) {
+						p.traceTarget = { ...activeTracePoints[p.tracePointIndex] };
+					} else if (currentIdx === activeTracePoints.length - 1) {
 						// Loop back to start for continuous tracing
 						p.tracePointIndex = 0;
-						p.traceTarget = { ...tracePoints[0] };
+						p.traceTarget = { ...activeTracePoints[0] };
 					}
 				}
 				
@@ -269,7 +387,9 @@ function initializeParticleSystem(THREE, canvas) {
 			const alpha = 1.0 - lifeRatio;
 			pos[i*3] = p.position.x; pos[i*3+1] = p.position.y; pos[i*3+2] = p.position.z;
 			al[i] = alpha * particleConfig.opacity;
-			sz[i] = isTracing && p.traceTarget ? p.size * 1.5 : p.size;
+			// Base size multiplier for tracing particles (no glow when typing)
+			let baseSizeMultiplier = isTracing && p.traceTarget ? 1.5 : 1.0;
+			sz[i] = p.size * baseSizeMultiplier;
 		}
 		geometry.attributes.position.needsUpdate = true;
 		geometry.attributes.alpha.needsUpdate = true;
@@ -297,14 +417,28 @@ function initializeParticleSystem(THREE, canvas) {
 
 	function lerpConfig(dt) {
 		const s = 0.08;
-		let sphereMul = 1.0, sizeMul = 1.0;
-		if (currentState === 'typing') {
+		let sphereMul = 1.0, sizeMul = 1.0, opacityMul = 1.0;
+		if (currentState === 'typing' || currentState === 'thinking') {
 			const t = performance.now() * 0.005;
 			const pulse = Math.sin(t) * 0.15 + 1.05;
 			sphereMul = pulse; sizeMul = pulse * 0.4 + 0.75;
 		}
+		// Steady glow effect when user is actively typing (but not during tracing - tracing has its own glow)
+		if (isUserTyping && currentState !== 'thinking' && currentState !== 'tracing') {
+			sizeMul = Math.max(sizeMul, 1.3); // Steady 30% size increase, no pulsing
+			opacityMul = 1.1; // Slightly brighter
+		}
 		for (const k of ['count','size','speed','lifetime','opacity','gravity','sphereRadius','colliderRadius']) {
-			const target = (k === 'sphereRadius' || k === 'colliderRadius') ? targetConfig[k] * sphereMul : (k === 'size' ? targetConfig[k] * sizeMul : targetConfig[k]);
+			let target;
+			if (k === 'sphereRadius' || k === 'colliderRadius') {
+				target = targetConfig[k] * sphereMul;
+			} else if (k === 'size') {
+				target = targetConfig[k] * sizeMul;
+			} else if (k === 'opacity') {
+				target = targetConfig[k] * opacityMul;
+			} else {
+				target = targetConfig[k];
+			}
 			particleConfig[k] += (target - particleConfig[k]) * s;
 		}
 		for (const k of ['scale','variation','smallScale','largeScale','smallStrength','largeStrength']) {
@@ -382,8 +516,13 @@ function initializeParticleSystem(THREE, canvas) {
 		const strong = hysteresis(nms, width, height, low, high);
 		// Reduced cell size from 3 to 1 for denser point sampling (no gaps)
 		const cell = 1; const edges = [];
-		for (let y = 1; y < height - 1; y += cell) {
-			for (let x = 1; x < width - 1; x += cell) {
+		
+		// Border margin to ignore (5% of dimension or at least 10px)
+		const marginX = Math.max(10, Math.floor(width * 0.05));
+		const marginY = Math.max(10, Math.floor(height * 0.05));
+		
+		for (let y = marginY; y < height - marginY; y += cell) {
+			for (let x = marginX; x < width - marginX; x += cell) {
 				if (strong[y*width + x]) {
 					edges.push({ x: x, y: y, strength: nms[y*width + x] });
 				}
@@ -493,12 +632,32 @@ function initializeParticleSystem(THREE, canvas) {
 			if (points.length === 0) { console.warn('No trace points'); return; }
 			// Increased max points significantly to prevent gaps
 			const maxPoints = 5000;
+			let newTracePoints;
 			if (points.length > maxPoints) {
 				// Use smarter downsampling - keep every Nth point but preserve continuity
 				const step = Math.ceil(points.length / maxPoints);
-				tracePoints = points.filter((_, i) => i % step === 0).slice(0, maxPoints);
-			} else tracePoints = points;
-			isTracing = true; assignTraceTargets(); setParticleState('tracing');
+				newTracePoints = points.filter((_, i) => i % step === 0).slice(0, maxPoints);
+			} else {
+				newTracePoints = points;
+			}
+			
+			// If already tracing, start transition effect
+			if (isTracing && tracePoints.length > 0) {
+				console.log('🔄 Transitioning from existing trace...');
+				previousTracePoints = [...tracePoints]; // Store current trace points
+				tracePoints = newTracePoints; // Set new trace points
+				isTransitioning = true;
+				transitionStartTime = performance.now();
+				// Keep tracing state active, particles will continue following previous points
+				// New particles will be created around previous trace points
+			} else {
+				// Normal start
+				tracePoints = newTracePoints;
+				isTracing = true;
+				assignTraceTargets();
+				setParticleState('tracing');
+			}
+			
 			if (tracingTimeout) clearTimeout(tracingTimeout);
 			tracingTimeout = setTimeout(() => { stopTracing(); }, 30000);
 			console.log(`🎨 Tracing ${tracePoints.length} points`);
@@ -506,10 +665,21 @@ function initializeParticleSystem(THREE, canvas) {
 	}
 	function stopTracing() {
 		console.log('🎨 Stopping tracing');
-		isTracing = false; tracePoints = [];
+		isTracing = false;
+		isTransitioning = false;
+		tracePoints = [];
+		previousTracePoints = [];
 		for (let i = 0; i < particles.length; i++) if (particles[i]) particles[i].traceTarget = null;
 		if (tracingTimeout) { clearTimeout(tracingTimeout); tracingTimeout = null; }
 		setParticleState('unfocused');
+	}
+
+	function setUserTyping(typing) {
+		isUserTyping = typing;
+	}
+
+	function setCharacterCount(count) {
+		characterCount = Math.max(0, count); // Ensure non-negative
 	}
 
 	window.SplineParticles = {
@@ -518,6 +688,8 @@ function initializeParticleSystem(THREE, canvas) {
 		traceImage: startTracing,
 		stopTracing: stopTracing,
 		isTracing: () => isTracing,
+		setUserTyping: setUserTyping,
+		setCharacterCount: setCharacterCount,
 		test: () => { console.log('Current:', currentState); console.log('Active particles:', particles.filter(p => p.active).length); }
 	};
 

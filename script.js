@@ -91,8 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  let currentTypingAnimation = null;
-
   input.placeholder = "Tell me your thoughts...";
 
   // Auto-grow textarea
@@ -107,43 +105,82 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.classList.toggle('enabled', hasText);
   }
 
-  // Check if subtitle area needs scrolling and update scrim visibility
-  function updateScrimVisibility() {
-    const subtitleWrapper = document.querySelector('.subtitle-wrapper');
-    const subtitleArea = document.querySelector('.subtitle-area');
+  // Typing detection for particle glow effect
+  let typingTimeout = null;
+  const TYPING_TIMEOUT = 500; // 500ms after last keystroke
+
+  function handleTyping() {
+    // Set particles to typing state
+    if (window.SplineParticles && window.SplineParticles.setUserTyping) {
+      window.SplineParticles.setUserTyping(true);
+    }
     
-    if (!subtitleWrapper || !subtitleArea) return;
+    // Update character count for particle emission scaling
+    const charCount = input.value.length;
+    if (window.SplineParticles && window.SplineParticles.setCharacterCount) {
+      window.SplineParticles.setCharacterCount(charCount);
+    }
     
-    // Check if content overflows (scrollHeight > clientHeight)
-    const needsScrolling = subtitleArea.scrollHeight > subtitleArea.clientHeight;
+    // Clear existing timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
     
-    // Add or remove 'scrollable' class based on overflow
-    subtitleWrapper.classList.toggle('scrollable', needsScrolling);
+    // Set timeout to detect when typing stops
+    typingTimeout = setTimeout(() => {
+      if (window.SplineParticles && window.SplineParticles.setUserTyping) {
+        window.SplineParticles.setUserTyping(false);
+      }
+      // Reset character count when typing stops
+      if (window.SplineParticles && window.SplineParticles.setCharacterCount) {
+        window.SplineParticles.setCharacterCount(0);
+      }
+    }, TYPING_TIMEOUT);
   }
 
   input.addEventListener('input', () => {
     autosize();
     updateButtonState();
+    handleTyping();
   });
 
-  autosize();
-  updateButtonState();
-
-  // Add window resize listener to update scrim visibility
-  window.addEventListener('resize', () => {
-    setTimeout(updateScrimVisibility, 100);
-  });
-
-  // Enter to send
+  // Combined keydown handler for typing detection and Enter to send
   input.addEventListener('keydown', (e) => {
+    // Enter to send
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       const text = input.value.trim();
       if (text) {
+        // Stop typing glow when sending
+        if (window.SplineParticles && window.SplineParticles.setUserTyping) {
+          window.SplineParticles.setUserTyping(false);
+        }
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+        }
         sendBtn.click();
       }
+    } else {
+      // Detect typing for glow effect (all other keys)
+      handleTyping();
     }
   });
+
+  // Stop typing glow when input loses focus
+  input.addEventListener('blur', () => {
+    if (window.SplineParticles && window.SplineParticles.setUserTyping) {
+      window.SplineParticles.setUserTyping(false);
+    }
+    if (window.SplineParticles && window.SplineParticles.setCharacterCount) {
+      window.SplineParticles.setCharacterCount(0);
+    }
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+  });
+
+  autosize();
+  updateButtonState();
 
   // Rate limiting
   let lastRequestTime = 0;
@@ -179,24 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateButtonState();
     lastRequestTime = now;
 
-    const subtitleText = document.querySelector('.subtitle-text');
-    
-    // Create thinking message
-    const thinkingDiv = document.createElement('div');
-    thinkingDiv.className = 'message thinking';
-    thinkingDiv.textContent = 'Thinking...';
-    subtitleText.appendChild(thinkingDiv);
-    subtitleText.classList.add('show');
-    
     // Set particles to thinking state
     if (window.SplineParticles) {
       window.SplineParticles.setState('thinking');
     }
-    
-    subtitleText.scrollTop = subtitleText.scrollHeight;
-    
-    // Update scrim visibility after adding content
-    setTimeout(updateScrimVisibility, 100);
 
     try {
       console.log('📤 Sending message:', text);
@@ -218,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const data = await response.json();
-      const aiResponse = data.response;
       
       console.log('📥 Response received');
       console.log('Is image:', data.isImage);
@@ -251,123 +273,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           console.warn('⚠️ Tracing not available');
         }
-      }
-
-      // Remove thinking message
-      const thinkingMessage = subtitleText.querySelector('.thinking');
-      if (thinkingMessage) {
-        thinkingMessage.remove();
-      }
-      
-      // Return particles to appropriate state (unless tracing)
-      if (window.SplineParticles && !data.isImage) {
-        const input = document.getElementById('chatInput');
-        if (input && document.activeElement === input) {
-          window.SplineParticles.setState('focused');
-        } else {
-          window.SplineParticles.setState('unfocused');
-        }
-      }
-      
-      // Add to conversation history with typewriter effect
-      const messageDiv = document.createElement('div');
-      messageDiv.className = 'message';
-      subtitleText.appendChild(messageDiv);
-      
-      // Update scrim visibility after adding new message
-      setTimeout(updateScrimVisibility, 100);
-      
-      // Simple markdown parser
-      function parseMarkdownSafe(text) {
-        const escaped = text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        const md = escaped
-          .replace(/^#### (.*$)/gm, '<h4>$1</h4>')
-          .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-          .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-          .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/\n/g, '<br>');
-        if (window.DOMPurify) {
-          return window.DOMPurify.sanitize(md, { ALLOWED_TAGS: ['h1','h2','h3','h4','strong','em','br'] });
-        }
-        return md;
-      }
-      
-      // Cancel any existing typing animation
-      if (currentTypingAnimation) {
-        clearTimeout(currentTypingAnimation);
-        currentTypingAnimation = null;
-      }
-      
-      // Set particles to typing state (unless it's an image)
-      if (window.SplineParticles && !data.isImage) {
-        window.SplineParticles.setState('typing');
-      }
-      
-      // Typewriter effect
-      let i = 0;
-      let currentText = '';
-      let isTyping = true;
-      
-      const typeWriter = () => {
-        if (!isTyping) return;
-        
-        if (i < aiResponse.length) {
-          currentText += aiResponse.charAt(i);
-          messageDiv.innerHTML = parseMarkdownSafe(currentText);
-          i++;
-          
-          const subtitleArea = document.querySelector('.subtitle-area');
-          if (subtitleArea) {
-            subtitleArea.scrollTop = subtitleArea.scrollHeight;
-          }
-          
-          // Update scrim visibility during typing (every 20 characters to avoid too many calls)
-          if (i % 20 === 0) {
-            updateScrimVisibility();
-          }
-          
-          currentTypingAnimation = setTimeout(typeWriter, 15);
-        } else {
-          // Typing finished
-          isTyping = false;
-          currentTypingAnimation = null;
-          
-          // Final update of scrim visibility after typing is complete
-          updateScrimVisibility();
-          
-          // Return to appropriate state (unless tracing)
-          if (window.SplineParticles) {
-            const currentState = window.SplineParticles.getCurrentState();
-            
-            if (currentState !== 'tracing') {
-              const input = document.getElementById('chatInput');
-              if (input && document.activeElement === input) {
-                window.SplineParticles.setState('focused');
-              } else {
-                window.SplineParticles.setState('unfocused');
-              }
-            }
+      } else {
+        // Return particles to appropriate state for non-image responses
+        if (window.SplineParticles) {
+          const input = document.getElementById('chatInput');
+          if (input && document.activeElement === input) {
+            window.SplineParticles.setState('focused');
+          } else {
+            window.SplineParticles.setState('unfocused');
           }
         }
-      };
-      
-      typeWriter();
-      
-      console.log('Total messages:', subtitleText.children.length);
+      }
 
     } catch (error) {
       console.error('❌ Request error:', error);
       showToast('There was an error. Please try again.');
-      
-      const thinkingMessage = subtitleText.querySelector('.thinking');
-      if (thinkingMessage) {
-        thinkingMessage.remove();
-      }
       
       // Return particles to appropriate state on error
       if (window.SplineParticles) {
@@ -378,8 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
           window.SplineParticles.setState('unfocused');
         }
       }
-      
-      subtitleText.classList.remove('show');
     }
 
     input.focus();

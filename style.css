@@ -1,5 +1,5 @@
 /* Using Google Fonts instead of local files */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap');
   
   /* color tokens */
   :root{
@@ -16,29 +16,72 @@
     --color-zinc-910: #0E0E10;
     --color-zinc-920: #0C0C0E;
     --color-zinc-950:#09090B;
-    
-    --color-neutral-800: #262626;
-    --color-neutral-900: #171717;
-    --color-neutral-910: #121212;
   
-  
-    --color-primary:#143EE2;
-    --color-primary-hover:#2750EC;
-  
-    --font-sans:'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+    --font-sans:'Figtree', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
   }
   
+.heading-1 {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  font-family: var(--font-sans);
+}
+.heading-2 {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-family: var(--font-sans);
+}
+.subheading-1 {
+  font-size: 16px;
+  font-weight: 300;
+  font-family: var(--font-sans);
+}
+.subheading-2{
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-family: var(--font-sans);
+}
+.body-1 {
+  font-size:14px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  font-family: var(--font-sans);
+}
+.body-2 {
+  font-size: 16px;
+  font-weight: 400;
+  font-family: var(--font-sans);
+}
+.overline-1 {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  font-family: var(--font-sans);
+}
+.button-1 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+}
+
+
+
   /* base */
   *{ box-sizing:border-box; }
   html, body { 
     height: 100%; 
-    overflow: hidden;           /* Prevents page scrolling */
+    overflow: hidden;
   }
   body{
     margin:0;
     font-family:var(--font-sans);
     background:var(--color-zinc-910);
     color:var(--color-zinc-50);
+    font-size: 16px;
   }
   
   /* hero layout */
@@ -78,9 +121,9 @@
   /* input container */
   .input-container {
     position: fixed;
-    bottom: 24px;
+    top: 66.67vh; /* Position at 2/3 of viewport */
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(-50%); /* Center vertically on the 2/3 mark */
     width: min(900px, 92vw);
     display: flex;
     flex-direction: column;
@@ -89,195 +132,24 @@
     pointer-events: auto;
   }
 
-  /* subtitle wrapper */
-  .subtitle-wrapper {
-    position: relative;
-    height: 200px;
-    max-height: 150px;
-  }
-
-  /* subtitle area */
-  .subtitle-area {
-    height: 100%;
-    background: none;
-    border: none;
-    padding: 16px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-zinc-900) transparent;
-    -ms-overflow-style: auto;
-  }
-  
-  /* Custom scrollbar styling */
-  .subtitle-area::-webkit-scrollbar {
-    width: 8px !important;
-    background: transparent !important;
-  }
-  
-  .subtitle-area::-webkit-scrollbar-track {
-    background: transparent !important;
-  }
-  
-  .subtitle-area::-webkit-scrollbar-thumb {
-    background: var(--color-zinc-900)!important;
-    border-radius: 4px !important;
-  }
-  
-  .subtitle-area::-webkit-scrollbar-thumb:hover {
-    background: var(--color-zinc-800) !important;
-  }
-  
-
-  /* scrims for subtitle area */
-  .subtitle-wrapper .top-scrim,
-  .subtitle-wrapper .bottom-scrim {
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 30px;
-    pointer-events: none;
-    z-index: 10;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  /* Show scrims when content overflows */
-  .subtitle-wrapper.scrollable .top-scrim,
-  .subtitle-wrapper.scrollable .bottom-scrim {
-    opacity: 1;
-  }
-
-  .subtitle-wrapper .top-scrim {
-    top: 0;
-    background: linear-gradient(to bottom, rgba(9, 9, 11, 0.9), transparent);
-  }
-
-  .subtitle-wrapper .bottom-scrim {
-    bottom: 0;
-    background: linear-gradient(to top, rgba(9, 9, 11, 0.9), transparent);
-  }
-
-  .subtitle-text {
-    font-size: 16px;
-    line-height: 1.6;
-    color: var(--color-zinc-200);
-    margin: 0;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-    font-weight: 400;
-  }
-
-  .subtitle-text.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .subtitle-text .message {
-    margin-bottom: 16px;
-    padding: 12px 0;
-    position: relative;
-    z-index: 2;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    max-width: 100%;
-  }
-
-  .subtitle-text .message:last-child {
-    margin-bottom: 0;
-  }
-
-  .subtitle-text .message.thinking {
-    opacity: 0.7;
-    font-style: italic;
-  }
-
-  /* Markdown-style formatting */
-  .subtitle-text .message strong,
-  .subtitle-text .message b {
-    font-weight: 600;
-    color: var(--color-zinc-100);
-  }
-
-  .subtitle-text .message em,
-  .subtitle-text .message i {
-    font-style: italic;
-  }
-
-  .subtitle-text .message h1,
-  .subtitle-text .message h2,
-  .subtitle-text .message h3,
-  .subtitle-text .message h4,
-  .subtitle-text .message h5,
-  .subtitle-text .message h6 {
-    font-weight: 600;
-    color: var(--color-zinc-100);
-    margin: 8px 0 4px 0;
-    line-height: 1.3;
-  }
-
-  .subtitle-text .message h1 {
-    font-size: 20px;
-    border-bottom: 1px solid var(--color-zinc-700);
-    padding-bottom: 4px;
-    margin: 12px 0 6px 0;
-  }
-
-  .subtitle-text .message h2 {
-    font-size: 18px;
-    border-bottom: 1px solid var(--color-zinc-800);
-    padding-bottom: 3px;
-    margin: 10px 0 5px 0;
-  }
-
-  .subtitle-text .message h3 {
-    font-size: 16px;
-    margin: 8px 0 4px 0;
-  }
-
-  .subtitle-text .message h4 {
-    font-size: 15px;
-    margin: 6px 0 3px 0;
-    color: var(--color-zinc-200);
-  }
-
-  .subtitle-text .message ul,
-  .subtitle-text .message ol {
-    margin: 8px 0;
-    padding-left: 20px;
-  }
-
-  .subtitle-text .message li {
-    margin: 4px 0;
-  }
-
-  .subtitle-text .message p {
-    margin: 4px 0;
-  }
-
-  .subtitle-text .message code {
-    background: var(--color-zinc-800);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-  }
-
   /* input bar */
   .input-shell{
-    height: 150px;
+    min-height: 56px; /* 12px top + 24px textarea + 12px bottom = 48px, plus button alignment = 56px */
+    max-height: 229px;
+    height: auto; /* Allow it to grow with content */
     background: color-mix(in srgb, var(--color-zinc-900) 60%, transparent);
     border:1px solid rgba(255,255,255,.08);
-    border-radius:24px;
+    border-radius:16px;
     padding:16px;
     display:flex; 
-    flex-direction: column;
-    gap:12px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
     overflow: hidden;
     position: relative;
     z-index: 101;
     pointer-events: auto;
+    box-sizing: border-box;
   }
 .input-shell:hover {
     border-color: rgba(255, 255, 255, 0.18);
@@ -309,31 +181,102 @@
   /* text area */
   #chatInput{
     flex: 1;
-    width: 100%;
+    min-width: 0; /* Allows flex item to shrink below content size */
+    width: 100%; /* Full width */
     background: none;
     border: 0;
     outline: none;
     box-shadow: none;
     -webkit-appearance: none;
     appearance: none;
-    resize:none; overflow:auto;
-    color:var(--color-zinc-50);
-    font:regular 14px/1.5 var(--font-sans);
+    resize: none; 
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    overflow: hidden; /* Hide scrollbar, let container handle overflow */
+    color: var(--color-zinc-50);
     position: relative;
     z-index: 102;
     pointer-events: auto;
     cursor: text;
+    height: 24px; /* Start with one line height (16px font * 1.5 line-height) */
+    line-height: 1.5;
+    padding: 0 !important;
+    margin: 0 !important;
+    vertical-align: top;
+    font-size: 16px; /* Ensure font size matches body-2 */
+  }
+  
+  /* When wrapped, ensure textarea is full width */
+  .input-shell.wrapped #chatInput {
+    width: 100%;
+    align-self: stretch; /* Stretch to full width in column layout */
   }
 
-  #chatInput::placeholder{ color:var(--color-zinc-600); }
+  /* Shimmer placeholder overlay - JavaScript-based solution */
+  .shimmer-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 16px;
+    font-weight: 400;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    color: transparent;
+    background: linear-gradient(
+      90deg,
+      var(--color-zinc-500) 0%,
+      var(--color-zinc-500) 30%,
+      var(--color-zinc-400) 40%,
+      var(--color-zinc-300) 45%,
+      var(--color-zinc-200) 50%,
+      var(--color-zinc-300) 55%,
+      var(--color-zinc-400) 60%,
+      var(--color-zinc-500) 70%,
+      var(--color-zinc-500) 100%
+    );
+    background-size: 150% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 8s linear infinite;
+    z-index: 101;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -50% 0;
+    }
+    100% {
+      background-position: 150% 0;
+    }
+  }
   
   /* send button container */
   .send-container {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0; /* Prevent button from shrinking */
+  }
+  
+  /* When input-shell is in column mode (text wrapped) */
+  .input-shell.wrapped .send-container {
+    width: 100%; /* Full width when in column layout */
+    margin-top: 8px; /* Add spacing when button is on its own row */
+    align-self: flex-end; /* Align button container to right */
+  }
+  
+  /* When input-shell is in row mode (one line) */
+  .input-shell:not(.wrapped) .send-container {
+    width: auto; /* Auto width when on same row */
   }
 
-  /* send button (icon-only) */
+  /* send button */
   button.send{
     padding: 8px;
     border-radius:8px;
@@ -343,21 +286,21 @@
     color:var(--color-zinc-500);
     display:grid; place-items:center;
     cursor:pointer;
-    transition: 0.2s;
-    font-size: 12px;
-    font-weight: 300;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    transition: opacity 0.2s;
     opacity: 0;
-    visibility: hidden;
     position: relative;
+    min-height: 32px; /* Fixed height so it always reserves space */
+    height: 32px;
     z-index: 2;
+    /* Always reserve space - don't use visibility: hidden */
+    pointer-events: none; /* Disable clicks when hidden */
+    flex-shrink: 0; /* Prevent button from shrinking */
   }
-
+  
   /* Only show button when it has the 'enabled' class (when there's text) */
   button.send.enabled {
     opacity: 1 !important;
-    visibility: visible !important;
+    pointer-events: auto; /* Enable clicks when visible */
   }
 
   .button-content {

@@ -104,35 +104,69 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
       return res.status(500).json({ error: 'Server missing GEMINI_API_KEY' });
     }
 
-    // Check if this is an image generation request
-    const imageKeywords = ['draw', 'sketch', 'create image', 'visualize', 'picture', 'illustration', 'design', 'paint', 'render', 'generate image'];
-    const isImageRequest = imageKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword.toLowerCase())
-    );
-
+    // All prompts are treated as image generation requests
     console.log(`📨 Request: "${message}"`);
-    console.log(`🎨 Is image request: ${isImageRequest}`);
+    console.log('🎨 Treating as image generation request...');
 
-    if (isImageRequest) {
+    // Clean the message by removing common image generation verbs at the start
+    let finalPrompt = message.trim();
+    const imageVerbs = ['draw', 'sketch', 'create', 'visualize', 'picture', 'illustrate', 'design', 'paint', 'render', 'generate', 'make'];
+    
+    for (const verb of imageVerbs) {
+      // Remove verb if it appears at the start of the message (case-insensitive)
+      const verbPattern = new RegExp(`^${verb}\\s+`, 'i');
+      if (verbPattern.test(finalPrompt)) {
+        finalPrompt = finalPrompt.replace(verbPattern, '').trim();
+        break; // Only remove the first matching verb
+      }
+    }
+
       console.log('🎨 Starting image generation with Gemini...');
       
       try {
         // Use Gemini's image generation (gemini-2.5-flash-image) as primary method
         // This produces better quality results than SVG generation
-        const subject = message.trim();
-        const imagePrompt = `Clean vector line art of ${subject}, minimalistic black outline, no fill, smooth continuous lines, uniform line weight, black background, white lines, SVG style, professional design, no shading, high contrast, sharp edges, symmetrical composition.`;
+      const subject = finalPrompt || message.trim(); // Fallback to original if cleaning removed everything
+      // For complex subjects (especially people), emphasize full body/complete subject
+      const isComplexSubject = /\b(person|people|human|man|woman|figure|character|portrait|face|head|body)\b/i.test(subject);
+      const completenessHint = isComplexSubject 
+        ? 'complete full subject, entire figure visible from head to toe, no cropping, no cut-off, ' 
+        : 'complete subject, no cropping, no cut-off, ';
+      // Explicitly request consistent square dimensions
+      const imagePrompt = `Clean vector line art of ${subject}, ${completenessHint}single focused subject centered on black background #000000, white lines #FFFFFF, minimalistic outline, no fill, smooth continuous lines, uniform line weight, no background elements, no environment, SVG style, professional design, no shading, high contrast, sharp edges, full composition, square format 1024x1024 pixels, high resolution, consistent sizing.`;
         
-        try {
-          const imageModel = process.env.IMAGE_MODEL || 'gemini-2.5-flash-image';
+      const imageModel = process.env.IMAGE_MODEL || 'gemini-1.5-flash';
           console.log(`🎨 Generating image with ${imageModel}...`);
           
-          const imgResponse = await client.models.generateContent({
+      let imgResponse;
+      try {
+        // Try the image generation API with responseModalities using generationConfig
+        imgResponse = await client.models.generateContent({
             model: imageModel,
             contents: imagePrompt,
-            config: {
+          generationConfig: {
               responseModalities: ['Image']
             }
           });
+      } catch (apiError) {
+        // Log the full error for debugging
+        console.error('❌ Image generation API error (with responseModalities):', apiError);
+        console.error('Error name:', apiError.name);
+        console.error('Error message:', apiError.message);
+        
+        // Try without responseModalities as fallback
+        console.log('⚠️ Trying image generation without responseModalities parameter...');
+        try {
+          imgResponse = await client.models.generateContent({
+            model: imageModel,
+            contents: imagePrompt
+          });
+          console.log('✅ Fallback API call succeeded');
+        } catch (fallbackError) {
+          console.error('❌ Fallback also failed:', fallbackError.message);
+          throw new Error(`Image generation API call failed: ${apiError.message}. Fallback also failed: ${fallbackError.message}`);
+        }
+      }
           
           // Extract image data from response parts
           // Check different possible response structures
@@ -153,25 +187,64 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
             throw new Error('Unknown response structure from Gemini API');
           }
           
-          // Extract image data from parts
-          for (const part of parts) {
+          // Extract image data from parts - check all parts in case image is split
+          console.log(`📦 Found ${parts.length} part(s) in response`);
+          const imageParts = [];
+          
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            let partData = null;
+            
             if (part.inlineData && part.inlineData.data) {
-              imageBase64 = part.inlineData.data;
-              break;
+              partData = part.inlineData.data;
             } else if (part.inline_data && part.inline_data.data) {
               // Alternative naming
-              imageBase64 = part.inline_data.data;
-              break;
+              partData = part.inline_data.data;
+            } else if (part.mimeType && part.mimeType.startsWith('image/')) {
+              // Check if there's image data in other formats
+              console.log(`📋 Part ${i} has mimeType: ${part.mimeType}`);
+            }
+            
+            if (partData) {
+              console.log(`📸 Found image data in part ${i}, length: ${partData.length}`);
+              imageParts.push(partData);
             }
           }
           
-          if (!imageBase64) {
+          // Combine all image parts if multiple found (though typically there should be only one)
+          if (imageParts.length === 0) {
             // Log the response structure for debugging
-            console.error('No image data found. Response structure:', JSON.stringify(imgResponse, null, 2).substring(0, 1000));
+            console.error('No image data found. Response structure:', JSON.stringify(imgResponse, null, 2).substring(0, 2000));
             throw new Error('No image data in response');
           }
           
-          console.log(`✅ Image generated, length: ${imageBase64.length}`);
+          // Use the largest image part (in case there are thumbnails or multiple versions)
+          imageBase64 = imageParts.reduce((largest, current) => 
+            current.length > largest.length ? current : largest, imageParts[0]);
+          
+          console.log(`📊 Using image part with length: ${imageBase64.length} (from ${imageParts.length} part(s))`);
+          
+          // Validate base64 string is complete (should end with valid base64 characters or padding)
+          const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+          if (!base64Pattern.test(imageBase64)) {
+            console.error('Invalid base64 format detected');
+            throw new Error('Invalid image data format');
+          }
+          
+          // Check if base64 string seems truncated (should be reasonably long for an image)
+          // For complex images, base64 should typically be at least 10KB (roughly 13,000 chars)
+          if (imageBase64.length < 100) {
+            console.error('Image data seems too short:', imageBase64.length);
+            throw new Error('Image data appears incomplete');
+          }
+          
+          // Check if base64 ends properly (should end with =, ==, or valid base64 char)
+          const lastChar = imageBase64[imageBase64.length - 1];
+          if (!/[A-Za-z0-9+/=]/.test(lastChar)) {
+            console.warn('⚠️ Base64 string may be truncated - last character is invalid');
+          }
+          
+          console.log(`✅ Image generated, length: ${imageBase64.length}, ends with: ${imageBase64.substring(imageBase64.length - 10)}`);
           
           return res.json({
             response: "I've created an image for you! The particles will now trace its outline.",
@@ -179,55 +252,26 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
             imageMime: 'image/png',
             isImage: true
           });
-          
-        } catch (imgGenError) {
-          console.error('❌ Gemini image generation failed:', imgGenError);
-          return res.status(500).json({ 
-            error: 'Image generation failed',
-            details: imgGenError.message || 'SVG outline generation was not successful. Please try again or rephrase your request.'
-          });
-        }
         
       } catch (imageError) {
         console.error('❌ Image generation failed:', imageError);
         console.error('Error details:', imageError.message);
+      console.error('Error stack:', imageError.stack);
         return res.status(500).json({ 
           error: 'Image generation failed',
-          details: imageError.message 
-        });
-      }
-
-    } else {
-      // Regular text chat
-      console.log('💬 Using regular chat completion...');
-      
-      try {
-        const chatModel = process.env.CHAT_MODEL || 'gemini-2.0-flash-exp';
-        const response = await client.models.generateContent({
-          model: chatModel,
-          contents: message
-        });
-
-        const content = response.text;
-        
-        console.log('✅ Chat response received');
-        
-        return res.json({ response: content, isImage: false });
-
-      } catch (chatError) {
-        console.error('❌ Chat API error:', chatError);
-        return res.status(500).json({ 
-          error: 'Chat API error',
-          details: chatError.message 
-        });
-      }
+        details: imageError.message || 'Image generation was not successful. Please try again or rephrase your request.'
+      });
     }
 
   } catch (error) {
     console.error('❌ Server error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     return res.status(500).json({ 
       error: 'Server error',
-      message: error.message 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -244,8 +288,8 @@ app.get('/', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`🎨 Image generation: Gemini (${process.env.IMAGE_MODEL || 'gemini-2.5-flash-image'})`);
-  console.log(`💬 Text chat: ${process.env.CHAT_MODEL || 'gemini-2.0-flash-exp'}`);
+  console.log(`🎨 Image generation: Gemini (${process.env.IMAGE_MODEL || 'gemini-1.5-flash'})`);
+  console.log(`💬 Text chat: ${process.env.CHAT_MODEL || 'gemini-1.5-flash'}`);
   console.log(`🔑 API Key: ${process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing'}`);
 });
 
@@ -253,7 +297,7 @@ app.listen(PORT, () => {
 async function generateSvgOutlineWithLLM(client, userPrompt) {
   // Prefer a powerful model; allow env override
   // Use IMAGE_MODEL for SVG generation (supports nano banana model)
-  const model = process.env.IMAGE_MODEL || process.env.OUTLINE_MODEL || 'gemini-2.0-flash-exp';
+  const model = process.env.IMAGE_MODEL || process.env.OUTLINE_MODEL || 'gemini-1.5-flash';
   const system = `You generate minimal SVG outlines suitable for particle tracing.
 Rules:
 - Output ONLY a self-contained <svg> element. No markdown, no explanation.

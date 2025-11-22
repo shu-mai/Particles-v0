@@ -91,12 +91,153 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  input.placeholder = "Tell me your thoughts...";
+  let placeholderText = "Try \"create a cat eating an icecream cone.\"";
+  let hasSentFirstMessage = false;
+  input.placeholder = ""; // Clear placeholder, we'll use overlay instead
 
-  // Auto-grow textarea
+  // Create shimmer overlay for placeholder
+  const shimmerOverlay = document.createElement('div');
+  shimmerOverlay.className = 'shimmer-placeholder';
+  shimmerOverlay.textContent = placeholderText;
+  input.parentElement.style.position = 'relative';
+  input.parentElement.appendChild(shimmerOverlay);
+
+  // Make shimmer responsive to text width and position it correctly
+  function updateShimmerSize() {
+    // Get the computed font family from the input element to ensure accurate measurement
+    const inputStyles = window.getComputedStyle(input);
+    const fontFamily = inputStyles.fontFamily;
+    
+    // Create a temporary span to measure text width
+    const tempSpan = document.createElement('span');
+    tempSpan.style.visibility = 'hidden';
+    tempSpan.style.position = 'absolute';
+    tempSpan.style.fontSize = '16px';
+    tempSpan.style.fontWeight = '400';
+    tempSpan.style.fontFamily = fontFamily;
+    tempSpan.style.whiteSpace = 'pre-wrap';
+    tempSpan.textContent = shimmerOverlay.textContent;
+    document.body.appendChild(tempSpan);
+    
+    const textWidth = tempSpan.offsetWidth;
+    const textHeight = tempSpan.offsetHeight;
+    document.body.removeChild(tempSpan);
+    
+    // Adjust background-size to be responsive to text width
+    // Make it slightly wider than the text so the shimmer can sweep across
+    const backgroundSize = Math.max(textWidth * 1.5, 200); // At least 1.5x text width, minimum 200px
+    shimmerOverlay.style.setProperty('--shimmer-width', `${backgroundSize}px`);
+    shimmerOverlay.style.backgroundSize = `${backgroundSize}px 100%`;
+    
+    // Position shimmer to match textarea position (accounting for button)
+    const sendContainer = document.querySelector('.send-container');
+    const sendContainerWidth = sendContainer ? sendContainer.offsetWidth : 80;
+    const gap = 12; // Match the gap in CSS
+    const inputShell = input.parentElement;
+    const isWrapped = inputShell.classList.contains('wrapped');
+    
+    shimmerOverlay.style.left = '16px';
+    if (isWrapped) {
+      // When wrapped, button is below, so shimmer can use full width
+      shimmerOverlay.style.right = '16px';
+    } else {
+      // When on same row, account for button width
+      shimmerOverlay.style.right = `${sendContainerWidth + gap + 16}px`;
+    }
+    shimmerOverlay.style.top = '50%';
+    shimmerOverlay.style.transform = 'translateY(-50%)';
+  }
+
+  // Update shimmer size when text changes or window resizes
+  updateShimmerSize();
+  window.addEventListener('resize', updateShimmerSize);
+
+  // Show/hide shimmer based on input state
+  function updateShimmer() {
+    if (input.value.trim().length === 0) {
+      shimmerOverlay.style.display = 'block';
+      updateShimmerSize(); // Recalculate on show
+    } else {
+      shimmerOverlay.style.display = 'none';
+    }
+  }
+
+  input.addEventListener('input', updateShimmer);
+  input.addEventListener('blur', updateShimmer);
+  updateShimmer(); // Initial state
+
+  // Auto-grow textarea to fit content and switch layout
   function autosize() {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    const containerMaxHeight = 229; // Container max-height
+    const containerPadding = 32; // 16px top + 16px bottom
+    const buttonHeight = 32; // Button height
+    const buttonMargin = 8; // Margin when wrapped
+    const oneLineHeight = 24; // One line: 16px font * 1.5 line-height
+    const inputShell = input.parentElement;
+    const isEmpty = input.value.trim().length === 0;
+    
+    // If empty, force reset to one line
+    if (isEmpty) {
+      input.style.height = oneLineHeight + 'px';
+      inputShell.classList.remove('wrapped');
+      inputShell.style.flexDirection = 'row';
+      inputShell.style.alignItems = 'center';
+      inputShell.style.height = 'auto'; // Reset container height
+      input.style.overflowY = 'hidden';
+      
+      // Update shimmer positioning
+      if (typeof updateShimmerSize === 'function') {
+        updateShimmerSize();
+      }
+      return;
+    }
+    
+    // Reset height to one line first to get accurate scrollHeight
+    input.style.height = '24px';
+    const scrollHeight = input.scrollHeight;
+    
+    // Calculate max height for textarea based on container max-height
+    // When wrapped: container max (229) - padding (32) - button height (32) - button margin (8) = 157px
+    // When not wrapped: container max (229) - padding (32) = 197px (but button is on same row, so use 197px)
+    const hasWrapped = scrollHeight > oneLineHeight;
+    const maxTextareaHeight = hasWrapped 
+      ? containerMaxHeight - containerPadding - buttonHeight - buttonMargin
+      : containerMaxHeight - containerPadding;
+    
+    // Calculate new height
+    let newHeight;
+    if (hasWrapped) {
+      // Text has wrapped, use scrollHeight but respect max
+      newHeight = Math.min(scrollHeight, maxTextareaHeight);
+    } else {
+      // Text fits in one line, keep it at one line
+      newHeight = oneLineHeight;
+    }
+    
+    input.style.height = newHeight + 'px';
+    
+    // Switch layout: row when one line, column when wrapped
+    if (hasWrapped) {
+      inputShell.classList.add('wrapped');
+      inputShell.style.flexDirection = 'column';
+      inputShell.style.alignItems = 'stretch'; // Stretch children to full width (textarea will be full width)
+    } else {
+      inputShell.classList.remove('wrapped');
+      inputShell.style.flexDirection = 'row';
+      inputShell.style.alignItems = 'center'; // Center align when on same row
+    }
+    
+    // Update shimmer positioning when layout changes
+    if (typeof updateShimmerSize === 'function') {
+      updateShimmerSize();
+    }
+    
+    // Update textarea overflow if needed
+    if (scrollHeight > maxTextareaHeight) {
+      input.style.overflowY = 'auto';
+    } else {
+      input.style.overflowY = 'hidden';
+    }
   }
 
   // Update button state
@@ -138,6 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }, TYPING_TIMEOUT);
   }
 
+  // Initial autosize to set correct starting height
+  autosize();
+  
   input.addEventListener('input', () => {
     autosize();
     updateButtonState();
@@ -216,8 +360,30 @@ document.addEventListener('DOMContentLoaded', () => {
     updateButtonState();
     lastRequestTime = now;
 
-    // Set particles to thinking state
+    // Update placeholder text after first message
+    if (!hasSentFirstMessage) {
+      hasSentFirstMessage = true;
+      placeholderText = "Create anything";
+      shimmerOverlay.textContent = placeholderText;
+      
+      // Remove shimmer effect and set to solid zinc-500 color
+      shimmerOverlay.style.animation = 'none';
+      shimmerOverlay.style.background = 'none';
+      shimmerOverlay.style.color = 'var(--color-zinc-500)';
+      shimmerOverlay.style.webkitTextFillColor = 'var(--color-zinc-500)';
+      shimmerOverlay.style.backgroundClip = 'unset';
+      shimmerOverlay.style.webkitBackgroundClip = 'unset';
+      
+      updateShimmerSize(); // Recalculate shimmer size for new text
+    }
+
+    // Stop any ongoing trace and set particles to thinking state
     if (window.SplineParticles) {
+      // Stop any ongoing trace animation
+      if (window.SplineParticles.stopTracing) {
+        window.SplineParticles.stopTracing();
+      }
+      // Set to thinking state for the new request
       window.SplineParticles.setState('thinking');
     }
 

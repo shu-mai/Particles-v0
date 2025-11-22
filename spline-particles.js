@@ -27,17 +27,19 @@ function initializeParticleSystem(THREE, canvas) {
 	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setClearColor(0x000000, 0);
 	
-	// Responsive sizing
+	// Responsive sizing (will be updated after material is created)
+	let material = null;
 	function updateSize() {
 		const width = canvas.clientWidth;
 		const height = canvas.clientHeight;
 		renderer.setSize(width, height);
 		camera.aspect = width / height;  // Maintains aspect ratio
 		camera.updateProjectionMatrix();
+		// Update viewport height uniform for responsive particle sizing
+		if (material && material.uniforms && material.uniforms.viewportHeight) {
+			material.uniforms.viewportHeight.value = Math.max(height || 600, 600); // Ensure minimum of 600
+		}
 	}
-	
-	// Initial size
-	updateSize();
 	
 	// Update on resize
 	window.addEventListener('resize', updateSize);
@@ -80,16 +82,26 @@ function initializeParticleSystem(THREE, canvas) {
 	geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
 	geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-	const material = new THREE.ShaderMaterial({
-		uniforms: { pointTexture: { value: createParticleTexture(THREE) } },
+		material = new THREE.ShaderMaterial({
+		uniforms: { 
+			pointTexture: { value: createParticleTexture(THREE) },
+			viewportHeight: { value: Math.max(canvas.clientHeight || 600, 600) } // Ensure minimum of 600
+		},
 		vertexShader: `
+			uniform float viewportHeight;
 			attribute float alpha;
 			attribute float size;
 			varying float vAlpha;
 			void main() {
 				vAlpha = alpha;
 				vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-				gl_PointSize = size * (300.0 / -mvPosition.z);
+				// Responsive particle sizing - scales down more aggressively on larger screens
+				// Uses a smaller reference height (800px) so particles are smaller on big monitors
+				// Original was 300, so we normalize: 300 * (800 / viewportHeight)
+				// This makes particles scale down more on larger screens
+				float referenceHeight = 800.0;
+				float baseScale = 300.0 * (referenceHeight / max(viewportHeight, 600.0));
+				gl_PointSize = size * (baseScale / -mvPosition.z);
 				gl_Position = projectionMatrix * mvPosition;
 			}
 		`,
@@ -105,6 +117,8 @@ function initializeParticleSystem(THREE, canvas) {
 		depthTest: false,
 		transparent: true
 	});
+	// Update viewport height uniform now that material is created
+	updateSize();
 	const particleSystem = new THREE.Points(geometry, material);
 	scene.add(particleSystem);
 
@@ -481,28 +495,226 @@ function initializeParticleSystem(THREE, canvas) {
 				}
 				img.onload = () => {
 					try {
+						// Verify image loaded correctly
+						if (!img.width || !img.height || img.width === 0 || img.height === 0) {
+							console.error('Invalid image dimensions:', img.width, img.height);
+							resolve([]);
+							return;
+						}
+						
+						console.log(`📐 Image dimensions: ${img.width}x${img.height}`);
+						
+						// Normalize to consistent size - always use 1024x1024 for processing
+						// This ensures consistent sizing regardless of what the API returns
+						const targetSize = 1024;
+						
 						const canvas = document.createElement('canvas');
 						const ctx = canvas.getContext('2d');
-						// Use much larger canvas for maximum detail (increased from 500 to 1000)
-						const maxSize = opts.maxSize || 1000;
-						const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-						canvas.width = img.width * scale; canvas.height = img.height * scale;
-						ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+						canvas.width = targetSize;
+						canvas.height = targetSize;
+						
+						// Calculate scale to fit image into target size while maintaining aspect ratio
+						const scale = Math.min(targetSize / img.width, targetSize / img.height);
+						const scaledWidth = img.width * scale;
+						const scaledHeight = img.height * scale;
+						
+						// Center the image on the canvas
+						const offsetX = (targetSize - scaledWidth) / 2;
+						const offsetY = (targetSize - scaledHeight) / 2;
+						
+						// Fill with black background first
+						ctx.fillStyle = '#000000';
+						ctx.fillRect(0, 0, targetSize, targetSize);
+						
+						// Draw the image centered
+						ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+						
+						console.log(`📐 Canvas dimensions: ${canvas.width}x${canvas.height}, image scaled to: ${scaledWidth.toFixed(0)}x${scaledHeight.toFixed(0)}, offset: ${offsetX.toFixed(0)},${offsetY.toFixed(0)}`);
+						
+						// Verify we got the full image data
 						const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-						// Very sensitive thresholds for maximum edge detection
-						// Minimal blur to preserve all edges
-						const low = opts.lowThreshold ?? 5; const high = opts.highThreshold ?? 20; const blurSigma = opts.blurSigma ?? 0.5;
-						const edges = detectEdgesAdvanced(imgData, { low, high, blurSigma });
-						let points = edges.map(e => ({ x: (e.x / canvas.width - 0.5) * 220, y: -(e.y / canvas.height - 0.5) * 220, z: 0 }));
-						// Minimal filtering - keep almost all points for complete tracing
-						// Increased max points significantly for maximum coverage
-						points = filterOutliers(points, 4, 1, 5000);
+						if (!imgData || imgData.width !== canvas.width || imgData.height !== canvas.height) {
+							console.error('Image data mismatch:', {
+								expected: `${canvas.width}x${canvas.height}`,
+								got: `${imgData?.width || 0}x${imgData?.height || 0}`
+							});
+							resolve([]);
+							return;
+						}
+						
+						console.log(`✅ Image data extracted: ${imgData.width}x${imgData.height}`);
+						
+						// Quick check: verify image has content in all quadrants (detect if cut off)
+						const hasContent = checkImageCompleteness(imgData);
+						if (!hasContent) {
+							console.warn('⚠️ Image may be incomplete - missing content in some quadrants');
+						}
+						
+						// Extract centerline instead of edges to avoid double-tracing thick lines
+						const centerline = extractCenterline(imgData);
+						let points = centerline.map(e => ({ x: (e.x / canvas.width - 0.5) * 220, y: -(e.y / canvas.height - 0.5) * 220, z: 0 }));
+						// Less aggressive filtering - only remove truly isolated points
+						// Reduced minNeighbors from 3 to 1, increased radius from 4 to 6
+						points = filterOutliers(points, 6, 1, 10000);
 						resolve(points);
 					} catch (err) { console.error('Process error:', err); resolve([]); }
 				};
 				img.onerror = () => { console.error('Image load error'); resolve([]); };
 			} catch (e) { console.error('Error:', e); resolve([]); }
 		});
+	}
+
+	// Check if image appears complete by verifying content in all quadrants
+	function checkImageCompleteness(imageData) {
+		const width = imageData.width, height = imageData.height;
+		const d = imageData.data;
+		const threshold = 128; // White pixel threshold
+		
+		// Check each quadrant for white pixels
+		const quadrants = [
+			{ x: 0, y: 0, w: Math.floor(width/2), h: Math.floor(height/2) }, // Top-left
+			{ x: Math.floor(width/2), y: 0, w: width, h: Math.floor(height/2) }, // Top-right
+			{ x: 0, y: Math.floor(height/2), w: Math.floor(width/2), h: height }, // Bottom-left
+			{ x: Math.floor(width/2), y: Math.floor(height/2), w: width, h: height } // Bottom-right
+		];
+		
+		let quadrantsWithContent = 0;
+		for (const quad of quadrants) {
+			let hasWhite = false;
+			// Sample some pixels in this quadrant
+			for (let y = quad.y; y < quad.h && y < height; y += Math.max(1, Math.floor(height/50))) {
+				for (let x = quad.x; x < quad.w && x < width; x += Math.max(1, Math.floor(width/50))) {
+					const idx = (y * width + x) * 4;
+					const brightness = (d[idx] + d[idx+1] + d[idx+2]) / 3;
+					if (brightness > threshold) {
+						hasWhite = true;
+						break;
+					}
+				}
+				if (hasWhite) break;
+			}
+			if (hasWhite) quadrantsWithContent++;
+		}
+		
+		// If less than 2 quadrants have content, image might be cut off
+		if (quadrantsWithContent < 2) {
+			console.warn(`⚠️ Only ${quadrantsWithContent} quadrant(s) have content - image may be incomplete`);
+			return false;
+		}
+		return true;
+	}
+
+	function extractCenterline(imageData) {
+		const width = imageData.width, height = imageData.height;
+		const d = imageData.data;
+		
+		// Verify image data is valid
+		if (!width || !height || d.length !== width * height * 4) {
+			console.error('Invalid image data:', { width, height, dataLength: d.length, expected: width * height * 4 });
+			return [];
+		}
+		
+		// Create binary mask (white = 1, black = 0)
+		const binary = new Uint8Array(width * height);
+		for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+			// Check if pixel is white (threshold > 128)
+			binary[p] = (d[i] + d[i+1] + d[i+2]) / 3 > 128 ? 1 : 0;
+		}
+		
+		// Simple distance transform - find distance to nearest black pixel
+		const distance = new Float32Array(width * height);
+		const maxDist = Math.max(width, height);
+		
+		// Initialize: white pixels get max distance, black get 0
+		for (let i = 0; i < width * height; i++) {
+			distance[i] = binary[i] === 1 ? maxDist : 0;
+		}
+		
+		// Forward pass (top-left to bottom-right)
+		for (let y = 0; y < height; y++) {
+			for (let x = 0; x < width; x++) {
+				const idx = y * width + x;
+				if (binary[idx] === 1) {
+					let minDist = distance[idx];
+					// Check top and left neighbors
+					if (y > 0) minDist = Math.min(minDist, distance[(y-1)*width + x] + 1);
+					if (x > 0) minDist = Math.min(minDist, distance[y*width + (x-1)] + 1);
+					if (y > 0 && x > 0) minDist = Math.min(minDist, distance[(y-1)*width + (x-1)] + Math.SQRT2);
+					if (y > 0 && x < width-1) minDist = Math.min(minDist, distance[(y-1)*width + (x+1)] + Math.SQRT2);
+					distance[idx] = minDist;
+				}
+			}
+		}
+		
+		// Backward pass (bottom-right to top-left)
+		for (let y = height - 1; y >= 0; y--) {
+			for (let x = width - 1; x >= 0; x--) {
+				const idx = y * width + x;
+				if (binary[idx] === 1) {
+					let minDist = distance[idx];
+					// Check bottom and right neighbors
+					if (y < height - 1) minDist = Math.min(minDist, distance[(y+1)*width + x] + 1);
+					if (x < width - 1) minDist = Math.min(minDist, distance[y*width + (x+1)] + 1);
+					if (y < height - 1 && x < width - 1) minDist = Math.min(minDist, distance[(y+1)*width + (x+1)] + Math.SQRT2);
+					if (y < height - 1 && x > 0) minDist = Math.min(minDist, distance[(y+1)*width + (x-1)] + Math.SQRT2);
+					distance[idx] = minDist;
+				}
+			}
+		}
+		
+		// Extract centerline: find local maxima (pixels that are centers of thick regions)
+		const centerline = [];
+		const marginX = Math.max(10, Math.floor(width * 0.05));
+		const marginY = Math.max(10, Math.floor(height * 0.05));
+		
+		for (let y = marginY; y < height - marginY; y++) {
+			for (let x = marginX; x < width - marginX; x++) {
+				const idx = y * width + x;
+				if (binary[idx] === 1) {
+					// Include thin lines (distance >= 0.5) and thick lines (distance > 1)
+					// For thin lines (1 pixel), distance will be ~0.5-1, so include them
+					if (distance[idx] >= 0.5) {
+						// For thick lines, find local maxima (centers)
+						// For thin lines, include all pixels
+						if (distance[idx] > 1) {
+							// Thick line: check if this is a local maximum
+							let isMax = true;
+							const currentDist = distance[idx];
+							
+							// Check 8-connected neighbors
+							for (let dy = -1; dy <= 1; dy++) {
+								for (let dx = -1; dx <= 1; dx++) {
+									if (dx === 0 && dy === 0) continue;
+									const nx = x + dx, ny = y + dy;
+									if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+										const nIdx = ny * width + nx;
+										if (binary[nIdx] === 1 && distance[nIdx] > currentDist) {
+											isMax = false;
+											break;
+										}
+									}
+								}
+								if (!isMax) break;
+							}
+							
+							if (isMax) {
+								centerline.push({ x, y, strength: distance[idx] });
+							}
+						} else {
+							// Thin line: include all pixels to avoid gaps
+							centerline.push({ x, y, strength: distance[idx] });
+						}
+					}
+				}
+			}
+		}
+		
+		// If no centerline found, fall back to edge detection
+		if (centerline.length === 0) {
+			return detectEdgesAdvanced(imageData, { low: 5, high: 20, blurSigma: 0.5 });
+		}
+		
+		return centerline;
 	}
 
 	function detectEdgesAdvanced(imageData, { low = 20, high = 60, blurSigma = 1.2 } = {}) {
@@ -581,6 +793,92 @@ function initializeParticleSystem(THREE, canvas) {
 	}
 
 	// Remove points with too few neighbors (islands) and cap output count
+	// Order points along the path to preserve continuity
+	function orderPointsAlongPath(points) {
+		if (points.length <= 1) return points;
+		
+		// Find starting point (furthest from center or top-left)
+		let startIdx = 0;
+		let maxDist = 0;
+		for (let i = 0; i < points.length; i++) {
+			const dist = Math.sqrt(points[i].x * points[i].x + points[i].y * points[i].y);
+			if (dist > maxDist) {
+				maxDist = dist;
+				startIdx = i;
+			}
+		}
+		
+		const ordered = [points[startIdx]];
+		const remaining = points.map((p, i) => i).filter(i => i !== startIdx);
+		let current = points[startIdx];
+		
+		// Greedy path: always pick nearest unvisited point
+		while (remaining.length > 0) {
+			let nearestIdx = 0;
+			let nearestDist = Infinity;
+			
+			for (let i = 0; i < remaining.length; i++) {
+				const idx = remaining[i];
+				const dx = points[idx].x - current.x;
+				const dy = points[idx].y - current.y;
+				const dist = Math.sqrt(dx*dx + dy*dy);
+				
+				if (dist < nearestDist) {
+					nearestDist = dist;
+					nearestIdx = i;
+				}
+			}
+			
+			const nextIdx = remaining[nearestIdx];
+			ordered.push(points[nextIdx]);
+			current = points[nextIdx];
+			remaining.splice(nearestIdx, 1);
+		}
+		
+		return ordered;
+	}
+	
+	// Distance-based downsampling that preserves path continuity
+	function downsamplePoints(points, maxPoints) {
+		if (points.length <= maxPoints) return points;
+		
+		// First order points along the path
+		const ordered = orderPointsAlongPath(points);
+		
+		// Calculate total path length
+		let totalLength = 0;
+		for (let i = 1; i < ordered.length; i++) {
+			const dx = ordered[i].x - ordered[i-1].x;
+			const dy = ordered[i].y - ordered[i-1].y;
+			totalLength += Math.sqrt(dx*dx + dy*dy);
+		}
+		
+		// Target spacing between points
+		const targetSpacing = totalLength / maxPoints;
+		const sampled = [ordered[0]]; // Always keep first point
+		let accumulatedDist = 0;
+		
+		for (let i = 1; i < ordered.length; i++) {
+			const dx = ordered[i].x - ordered[i-1].x;
+			const dy = ordered[i].y - ordered[i-1].y;
+			const segmentDist = Math.sqrt(dx*dx + dy*dy);
+			accumulatedDist += segmentDist;
+			
+			// If we've accumulated enough distance, add this point
+			if (accumulatedDist >= targetSpacing) {
+				sampled.push(ordered[i]);
+				accumulatedDist = 0;
+			}
+		}
+		
+		// Always keep last point
+		if (sampled[sampled.length - 1] !== ordered[ordered.length - 1]) {
+			sampled.push(ordered[ordered.length - 1]);
+		}
+		
+		return sampled;
+	}
+
 	function filterOutliers(points, neighborRadius = 8, minNeighbors = 3, maxPoints = 1800) {
 		if (points.length === 0) return points;
 		const r2 = neighborRadius * neighborRadius;
@@ -634,9 +932,8 @@ function initializeParticleSystem(THREE, canvas) {
 			const maxPoints = 5000;
 			let newTracePoints;
 			if (points.length > maxPoints) {
-				// Use smarter downsampling - keep every Nth point but preserve continuity
-				const step = Math.ceil(points.length / maxPoints);
-				newTracePoints = points.filter((_, i) => i % step === 0).slice(0, maxPoints);
+				// Use distance-based downsampling that preserves path continuity
+				newTracePoints = downsamplePoints(points, maxPoints);
 			} else {
 				newTracePoints = points;
 			}

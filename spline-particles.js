@@ -71,7 +71,7 @@ function initializeParticleSystem(THREE, canvas) {
 	let characterCount = 0;
 
 	// Geometry & buffers
-	const maxParticles = 12000;
+	const maxParticles = 40000; // Increased to 40k to support very complex "etching" style images like Zeus
 	const geometry = new THREE.BufferGeometry();
 	const positions = new Float32Array(maxParticles * 3);
 	const colors = new Float32Array(maxParticles * 3);
@@ -225,6 +225,14 @@ function initializeParticleSystem(THREE, canvas) {
 		// Normal particle emission (with boost when user is typing)
 		let emitRate = particleConfig.count / particleConfig.lifetime;
 		
+		// Boost emission if we have a large deficit of active particles (e.g. when starting a complex trace)
+		if (isTracing) {
+			const activeCount = particles.reduce((acc, p) => acc + (p.active ? 1 : 0), 0);
+			if (activeCount < particleConfig.count * 0.8) {
+				emitRate *= 8.0; // Aggressive fill
+			}
+		}
+
 		// Scale emission rate based on character count (linear scaling)
 		// Base rate when characterCount = 0, increases with each character
 		if (isUserTyping && currentState !== 'thinking') {
@@ -552,10 +560,19 @@ function initializeParticleSystem(THREE, canvas) {
 						
 						// Extract centerline instead of edges to avoid double-tracing thick lines
 						const centerline = extractCenterline(imgData);
-						let points = centerline.map(e => ({ x: (e.x / canvas.width - 0.5) * 220, y: -(e.y / canvas.height - 0.5) * 220, z: 0 }));
+						
+						// Use responsive scale from opts, default to 220 if not provided
+						const sizeScale = opts.scale || 220;
+						
+						let points = centerline.map(e => ({ 
+							x: (e.x / canvas.width - 0.5) * sizeScale, 
+							y: -(e.y / canvas.height - 0.5) * sizeScale, 
+							z: 0 
+						}));
 						// Less aggressive filtering - only remove truly isolated points
 						// Reduced minNeighbors from 3 to 1, increased radius from 4 to 6
-						points = filterOutliers(points, 6, 1, 10000);
+						// Increased maxPoints from 10000 to 50000 to prevent truncation of complex images
+						points = filterOutliers(points, 6, 1, 50000);
 						resolve(points);
 					} catch (err) { console.error('Process error:', err); resolve([]); }
 				};
@@ -793,7 +810,7 @@ function initializeParticleSystem(THREE, canvas) {
 	}
 
 	// Remove points with too few neighbors (islands) and cap output count
-	// Order points along the path to preserve continuity
+	// Order points along the path to preserve continuity - Optimized with spatial grid
 	function orderPointsAlongPath(points) {
 		if (points.length <= 1) return points;
 		
@@ -809,30 +826,96 @@ function initializeParticleSystem(THREE, canvas) {
 		}
 		
 		const ordered = [points[startIdx]];
-		const remaining = points.map((p, i) => i).filter(i => i !== startIdx);
-		let current = points[startIdx];
+		const current = { ...points[startIdx] }; // Copy to avoid reference issues
+		let remainingCount = points.length - 1;
 		
-		// Greedy path: always pick nearest unvisited point
-		while (remaining.length > 0) {
-			let nearestIdx = 0;
-			let nearestDist = Infinity;
+		// Spatial grid for O(1) neighbor lookup
+		const cellSize = 15;
+		const grid = new Map();
+		const getKey = (p) => `${Math.floor(p.x/cellSize)},${Math.floor(p.y/cellSize)}`;
+		
+		// Populate grid with all points except start
+		for (let i = 0; i < points.length; i++) {
+			if (i === startIdx) continue;
+			const key = getKey(points[i]);
+			if (!grid.has(key)) grid.set(key, []);
+			grid.get(key).push(i);
+		}
+		
+		let currPos = current;
+		
+		while (remainingCount > 0) {
+			let nearestIdx = -1;
+			let nearestDistSq = Infinity;
 			
-			for (let i = 0; i < remaining.length; i++) {
-				const idx = remaining[i];
-				const dx = points[idx].x - current.x;
-				const dy = points[idx].y - current.y;
-				const dist = Math.sqrt(dx*dx + dy*dy);
+			const gx = Math.floor(currPos.x / cellSize);
+			const gy = Math.floor(currPos.y / cellSize);
+			
+			// Search expanding rings
+			const maxRing = 20; // Enough to cover gaps
+			let found = false;
+			
+			for (let r = 0; r <= maxRing; r++) {
+				// Check cells in ring r
+				for (let dy = -r; dy <= r; dy++) {
+					for (let dx = -r; dx <= r; dx++) {
+						// Only check outer ring if r > 0
+						if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+						
+						const key = `${gx+dx},${gy+dy}`;
+						const cellPoints = grid.get(key);
+						
+						if (cellPoints && cellPoints.length > 0) {
+							for (const idx of cellPoints) {
+								const p = points[idx];
+								const dSq = (p.x - currPos.x)**2 + (p.y - currPos.y)**2;
+								if (dSq < nearestDistSq) {
+									nearestDistSq = dSq;
+									nearestIdx = idx;
+								}
+							}
+						}
+					}
+				}
 				
-				if (dist < nearestDist) {
-					nearestDist = dist;
-					nearestIdx = i;
+				// If we found a point in this ring, and we've checked at least ring 1 (neighbors),
+				// we can stop. (Strictly speaking we should check r+1 to be perfect, but this is heuristic)
+				if (nearestIdx !== -1) {
+					found = true;
+					break;
 				}
 			}
 			
-			const nextIdx = remaining[nearestIdx];
-			ordered.push(points[nextIdx]);
-			current = points[nextIdx];
-			remaining.splice(nearestIdx, 1);
+			// Fallback if grid search failed (very large gap) - pick any remaining point
+			if (nearestIdx === -1) {
+				for (const [key, indices] of grid) {
+					if (indices.length > 0) {
+						nearestIdx = indices[0];
+						break;
+					}
+				}
+			}
+			
+			if (nearestIdx !== -1) {
+				const p = points[nearestIdx];
+				ordered.push(p);
+				currPos = p;
+				remainingCount--;
+				
+				// Remove from grid
+				const key = getKey(p);
+				const cellPoints = grid.get(key);
+				if (cellPoints) {
+					const idxInCell = cellPoints.indexOf(nearestIdx);
+					if (idxInCell !== -1) {
+						// Fast remove
+						cellPoints[idxInCell] = cellPoints[cellPoints.length - 1];
+						cellPoints.pop();
+					}
+				}
+			} else {
+				break; // Should not happen
+			}
 		}
 		
 		return ordered;
@@ -845,24 +928,44 @@ function initializeParticleSystem(THREE, canvas) {
 		// First order points along the path
 		const ordered = orderPointsAlongPath(points);
 		
-		// Calculate total path length
+		// Calculate total path length IGNORING jumps between disconnected parts
 		let totalLength = 0;
+		const jumpThreshold = 50; // Treat distances > 50 as a jump (gap)
+		
 		for (let i = 1; i < ordered.length; i++) {
 			const dx = ordered[i].x - ordered[i-1].x;
 			const dy = ordered[i].y - ordered[i-1].y;
-			totalLength += Math.sqrt(dx*dx + dy*dy);
+			const d = Math.sqrt(dx*dx + dy*dy);
+			// Only add to length if it's a continuous line, not a jump
+			if (d < jumpThreshold) totalLength += d;
 		}
 		
 		// Target spacing between points
-		const targetSpacing = totalLength / maxPoints;
+		// Adaptive: aim for constant density (e.g. 1 point every 2 units) up to maxPoints
+		// This ensures large/complex images get enough resolution
+		const desiredSpacing = 2.0;
+		let targetCount = Math.ceil(totalLength / desiredSpacing);
+		targetCount = Math.min(targetCount, maxPoints);
+		// Ensure at least some points if length is small
+		targetCount = Math.max(targetCount, Math.min(ordered.length, 100));
+		
+		const targetSpacing = totalLength / targetCount;
 		const sampled = [ordered[0]]; // Always keep first point
 		let accumulatedDist = 0;
 		
 		for (let i = 1; i < ordered.length; i++) {
 			const dx = ordered[i].x - ordered[i-1].x;
 			const dy = ordered[i].y - ordered[i-1].y;
-			const segmentDist = Math.sqrt(dx*dx + dy*dy);
-			accumulatedDist += segmentDist;
+			const d = Math.sqrt(dx*dx + dy*dy);
+			
+			// If this is a jump/gap, always include the start of the new segment
+			if (d >= jumpThreshold) {
+				sampled.push(ordered[i]);
+				accumulatedDist = 0;
+				continue;
+			}
+
+			accumulatedDist += d;
 			
 			// If we've accumulated enough distance, add this point
 			if (accumulatedDist >= targetSpacing) {
@@ -925,11 +1028,19 @@ function initializeParticleSystem(THREE, canvas) {
 	// Public API
 	async function startTracing(imageData, opts = {}) {
 		try {
-			console.log('🎨 Starting tracing...');
-			const points = await processImageForTracing(imageData, opts);
+			// Calculate responsive scale based on current viewport
+			const fov = camera.fov * (Math.PI / 180);
+			const viewHeight = 2 * Math.tan(fov / 2) * camera.position.z;
+			const viewWidth = viewHeight * camera.aspect;
+			// Use 85% of the smaller dimension to ensure it fits
+			const responsiveScale = Math.min(viewWidth, viewHeight) * 0.85;
+			
+			console.log(`🎨 Starting tracing... (Scale: ${responsiveScale.toFixed(2)})`);
+			const points = await processImageForTracing(imageData, { ...opts, scale: responsiveScale });
 			if (points.length === 0) { console.warn('No trace points'); return; }
-			// Increased max points significantly to prevent gaps
-			const maxPoints = 5000;
+			
+			// Increased max points significantly to prevent gaps and support high detail
+			const maxPoints = 10000;
 			let newTracePoints;
 			if (points.length > maxPoints) {
 				// Use distance-based downsampling that preserves path continuity
@@ -943,6 +1054,25 @@ function initializeParticleSystem(THREE, canvas) {
 				console.log('🔄 Transitioning from existing trace...');
 				previousTracePoints = [...tracePoints]; // Store current trace points
 				tracePoints = newTracePoints; // Set new trace points
+				
+				// Update particle count to match complexity of new image
+				// Use density-based calculation instead of simple multiplier
+				// Aim for ~1.5 particles per unit of length for solid lines
+				const estimatedLength = tracePoints.length * 2.0; // Approx length from point count (assuming 2.0 spacing)
+				const optimalCount = Math.ceil(estimatedLength * 1.5);
+				
+				// Allow going up to maxParticles, but ensure at least 5000 for simple shapes
+				const neededParticles = Math.min(Math.max(optimalCount, 5000), maxParticles);
+				
+				if (particleStates.tracing) {
+					particleStates.tracing.count = neededParticles;
+					// Apply immediately for fast response
+					if (currentState === 'tracing') {
+						targetConfig.count = neededParticles;
+						particleConfig.count = neededParticles;
+					}
+				}
+
 				isTransitioning = true;
 				transitionStartTime = performance.now();
 				// Keep tracing state active, particles will continue following previous points
@@ -950,6 +1080,20 @@ function initializeParticleSystem(THREE, canvas) {
 			} else {
 				// Normal start
 				tracePoints = newTracePoints;
+				
+				// Update particle count to match complexity
+				// Use density-based calculation
+				const estimatedLength = tracePoints.length * 2.0;
+				const optimalCount = Math.ceil(estimatedLength * 1.5);
+				const neededParticles = Math.min(Math.max(optimalCount, 5000), maxParticles);
+				
+				if (particleStates.tracing) {
+					particleStates.tracing.count = neededParticles;
+					// Apply immediately
+					targetConfig.count = neededParticles;
+					particleConfig.count = neededParticles;
+				}
+
 				isTracing = true;
 				assignTraceTargets();
 				setParticleState('tracing');

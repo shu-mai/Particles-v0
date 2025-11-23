@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  let placeholderText = "Try \"create a cat eating an icecream cone.\"";
+  let placeholderText = "Try \"create a cat eating icecream.\"";
   let hasSentFirstMessage = false;
   input.placeholder = ""; // Clear placeholder, we'll use overlay instead
 
@@ -369,8 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Remove shimmer effect and set to solid zinc-500 color
       shimmerOverlay.style.animation = 'none';
       shimmerOverlay.style.background = 'none';
-      shimmerOverlay.style.color = 'var(--color-zinc-500)';
-      shimmerOverlay.style.webkitTextFillColor = 'var(--color-zinc-500)';
+      shimmerOverlay.style.color = 'var(--color-zinc-700)';
+      shimmerOverlay.style.webkitTextFillColor = 'var(--color-zinc-700)';
       shimmerOverlay.style.backgroundClip = 'unset';
       shimmerOverlay.style.webkitBackgroundClip = 'unset';
       

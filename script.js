@@ -469,4 +469,107 @@ document.addEventListener('DOMContentLoaded', () => {
     input.focus();
   });
 
+
+  // Navigation tabs state management
+  const navTabs = document.querySelectorAll('.nav-tab');
+  navTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active class from all tabs
+      navTabs.forEach(t => t.classList.remove('active'));
+
+      // Add active class to clicked tab
+      tab.classList.add('active');
+
+      // Get the tab name for potential content switching
+      const tabName = tab.getAttribute('data-tab');
+      console.log(`Switched to tab: ${tabName}`);
+    });
+  });
+
+  // Modal close functionality
+  const modal = document.getElementById('mainModal');
+  const closeBtn = document.querySelector('.modal-close');
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
+
+  // Mobile sidebar toggle functionality
+  const sidebarToggle = document.querySelector('.sidebar-toggle');
+  const sidebarOverlay = document.querySelector('.sidebar-overlay');
+  const avatar = document.querySelector('.avatar');
+
+  function toggleSidebar() {
+    document.body.classList.toggle('sidebar-open');
+  }
+
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', toggleSidebar);
+  }
+
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => {
+      document.body.classList.remove('sidebar-open');
+    });
+  }
+
+  if (avatar) {
+    avatar.addEventListener('click', () => {
+      if (document.body.classList.contains('sidebar-open')) {
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+  }
+
+  // Locked Project Modal functionality
+  const lockedProjectModal = document.getElementById('lockedProjectModal');
+  const tiktokTab = document.querySelector('[data-tab="tiktok-logo"]');
+  const optoTab = document.querySelector('[data-tab="opto"]');
+  const cancelBtn = document.querySelector('.btn-cancel');
+  const continueBtn = document.querySelector('.btn-continue');
+  const overlay = document.querySelector('.locked-project-overlay');
+  const passwordInput = document.querySelector('.password-input');
+
+  // Open modal when clicking locked tabs
+  if (tiktokTab) {
+    tiktokTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      lockedProjectModal.classList.add('active');
+    });
+  }
+
+  if (optoTab) {
+    optoTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      lockedProjectModal.classList.add('active');
+    });
+  }
+
+  // Close modal when clicking cancel
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      lockedProjectModal.classList.remove('active');
+      passwordInput.value = '';
+    });
+  }
+
+  // Close modal when clicking overlay
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      lockedProjectModal.classList.remove('active');
+      passwordInput.value = '';
+    });
+  }
+
+  // Continue button logic
+  if (continueBtn) {
+    continueBtn.addEventListener('click', () => {
+      // Add your password validation logic here
+      console.log('Continue clicked with password:', passwordInput.value);
+      // For now, just close the modal
+      lockedProjectModal.classList.remove('active');
+      passwordInput.value = '';
+    });
+  }
 });

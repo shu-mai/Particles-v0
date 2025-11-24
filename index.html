@@ -2,35 +2,185 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Mind Mapper</title>
+    <title>Michelle Xu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="style.css" rel="stylesheet" />
+
+    <!-- Phosphor Icons -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css"
+    />
   </head>
   <body>
-    <!-- HERO -->
-    <div class="hero">
+    <!-- Two-column layout container -->
+    <div class="main-container">
+      <!-- Overlay Mask -->
+      <div class="sidebar-overlay"></div>
 
-      <!-- Spline 3D Animation (replaces Lottie eyes) -->
-      <canvas id="canvas3d" style="cursor: default; width: 1000px; height: 1000px;"></canvas>
+      <!-- Left sidebar -->
+      <aside class="sidebar">
 
-      <!-- Input container -->
-      <div class="input-container">
-        <!-- Big input bar -->
-        <div class="input-shell">
-          <textarea id="chatInput" class="body-2"
-            placeholder=""
-            autocomplete="off"></textarea>
+        <!-- Top section: Profile -->
+        <div class="sidebar-top">
+          <!-- Avatar -->
+          <div class="avatar">
+            <div class="avatar-overlay">
+              <i class="ph ph-sidebar-simple"></i>
+            </div>
+          </div>
 
-          <div class="send-container">
-            <button type="button" class="send" id="sendBtn" aria-label="Send">
-              <span class="button-content button-1">
-                ENTER
-                <i data-lucide="corner-down-right"></i>
-              </span>
-            </button>
+          <!-- Profile text -->
+          <div class="profile-text">
+            <div class="body-2">Michelle Xu</div>
+            <div class="body-1">Product designer</div>
           </div>
         </div>
-      </div>
+
+        <!-- Bottom section: Navigation -->
+        <nav class="sidebar-nav">
+          <!-- Navigation tab -->
+          <button class="nav-tab active" data-tab="house">
+            <i class="ph ph-house nav-icon"></i>
+            <span class="nav-text body-1">Home</span>
+          </button>
+
+          <!-- About tab -->
+          <button class="nav-tab" data-tab="cursor-click">
+            <i class="ph ph-cursor-click nav-icon"></i>
+          <span class="nav-text body-1">About</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="nav-divider"></div>
+
+          <!-- Email tab -->
+          <button class="nav-tab" data-tab="envelope-simple">
+            <i class="ph ph-envelope-simple nav-icon"></i>
+            <span class="nav-text body-1">Email</span>
+          </button>
+
+          <!-- Linkedin tab-->
+          <button class="nav-tab" data-tab="linkedin-logo">
+            <i class="ph ph-linkedin-logo nav-icon"></i>
+            <span class="nav-text body-1">Linkedin</span>
+          </button>
+
+          <!-- X tab-->
+          <button class="nav-tab" data-tab="x-logo">
+            <i class="ph ph-x-logo nav-icon"></i>
+            <span class="nav-text body-1">X</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="nav-divider"></div>
+
+          <!-- Work section heading -->
+          <div class="nav-subheading subheading-2">Work</div>
+
+          <!-- Opto tab-->
+          <button class="nav-tab" data-tab="opto" style="justify-content: space-between;">
+            <div class="nav-tab-content">
+              <div class="nav-icon-wrapper">
+                <div class="nav-icon default-icon">
+                  <svg style="width: 0.875rem; height: 0.875rem;" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M708.123 0H299.16V182.633H594.958C607.283 182.633 617.367 192.717 617.367 205.042V500.841H800V91.8769C800 41.4567 758.544 0 708.123 0Z" fill="currentColor"/>
+                    <path d="M182.633 16.8067V594.958C182.633 607.283 192.717 617.367 205.042 617.367H783.193L600.56 800H91.8767C41.4566 800 0 758.544 0 708.123V199.44L182.633 16.8067Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <i class="ph ph-caret-right nav-icon hover-icon"></i>
+              </div>
+              <span class="nav-text body-1">Opto | 8VC</span>
+            </div>
+            <i class="ph ph-lock nav-lock-icon"></i>
+          </button>
+          
+          <!-- Tiktok tab-->
+          <button class="nav-tab" data-tab="tiktok-logo" style="justify-content: space-between;">
+            <div class="nav-tab-content">
+              <div class="nav-icon-wrapper">
+                <i class="ph ph-tiktok-logo nav-icon default-icon"></i>
+                <i class="ph ph-caret-right nav-icon hover-icon"></i>
+              </div>
+              <span class="nav-text body-1">TikTok</span>
+            </div>
+            <i class="ph ph-lock nav-lock-icon"></i>
+          </button>
+
+          <!-- Child tab under TikTok -->
+          <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+            <div class="nav-tab-content">
+              <div class="nav-icon-wrapper">
+                <i class="ph ph-circle-fill nav-icon default-icon"></i>
+              </div>
+              <span class="nav-text body-1">Improving AI-Generated Prompt Experiences</span>
+            </div>
+          </button>
+
+          <!-- Projects section heading -->
+          <div class="nav-subheading subheading-2">Projects</div>
+
+          <!-- NYU tab-->
+          <button class="nav-tab" data-tab="graduation-cap" style="justify-content: space-between;">
+            <div class="nav-tab-content">
+            <div class="nav-icon-wrapper">
+              <i class="ph ph-graduation-cap nav-icon default-icon"></i>
+              <i class="ph ph-caret-right nav-icon hover-icon"></i>
+            </div>
+          <span class="nav-text body-1">NYU</span>
+          </div>
+          </button>
+        </nav>
+
+      </aside>
+
+      <!-- Right content area -->
+      <main class="content">
+        
+        <!-- Mobile header (visible only when sidebar is hidden) -->
+        <div class="mobile-header">
+          <button class="sidebar-toggle" aria-label="Toggle Sidebar">
+            <i class="ph ph-sidebar-simple"></i>
+          </button>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero">
+          <!-- Spline 3D Animation (replaces Lottie eyes) -->
+          <canvas id="canvas3d" style="cursor: default; width: 1000px; height: 1000px;"></canvas>
+        </div>
+
+        <!-- Input container -->
+        <div class="input-container">
+          <!-- Big input bar -->
+          <div class="input-shell">
+            <textarea id="chatInput" class="body-2"
+              placeholder=""
+              autocomplete="off"></textarea>
+
+            <div class="send-container">
+              <button type="button" class="send" id="sendBtn" aria-label="Send">
+                <span class="button-content button-1">
+                  ENTER
+                  <i class="ph ph-bold ph-arrow-elbow-down-right"></i>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
     </div>
 
     <!-- Lucide (icons) -->
@@ -38,10 +188,53 @@
 
     <!-- DOMPurify for XSS mitigation -->
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js" integrity="" crossorigin="anonymous"></script>
-    
+
+    <!-- Locked Project Modal -->
+    <div class="locked-project-modal" id="lockedProjectModal">
+      <div class="locked-project-overlay"></div>
+      <div class="locked-project-content">
+        <!-- Icon and text section -->
+        <div class="icon-text">
+          <div class="lock-icon-container">
+            <i class="ph ph-lock"></i>
+          </div>
+          <div class="lock-text">
+            <div class="body-2">This project is locked.</div>
+            <div class="body-1 lock-text-description">Projects under this file are held against an NDA. Please provide a password to continue.</div>
+          </div>
+        </div>
+
+        <!-- Input section -->
+        <input type="password" class="body-1 password-input" placeholder="Enter password" />
+
+        <!-- Action buttons -->
+        <div class="action-buttons">
+          <button class="button-2 btn-cancel">Cancel</button>
+          <button class="button-2 btn-continue">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="mainModal">
+      <!-- Top section with image and close button -->
+      <div class="modal-top">
+        <div class="modal-image"></div>
+        <button class="modal-close" aria-label="Close modal">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <!-- Bottom section with text -->
+      <div class="modal-bottom">
+        <div class="body-1">Everyone should have access to put their imagination to life</div>
+        <div class="subheading-2 modal-link">Learn more about me</div>
+      </div>
+    </div>
+
     <!-- Load particle system -->
     <script type="module" src="spline-particles.js"></script>
-    
+
     <!-- Your app logic -->
     <script defer src="script.js"></script>
   </body>

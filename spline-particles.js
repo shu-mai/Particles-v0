@@ -110,7 +110,8 @@ function initializeParticleSystem(THREE, canvas) {
 			varying float vAlpha;
 			void main() {
 				vec4 texColor = texture2D(pointTexture, gl_PointCoord);
-				gl_FragColor = vec4(1.0, 1.0, 1.0, texColor.a * vAlpha);
+				// Boost alpha by 2.0 to make particles brighter without increasing size
+				gl_FragColor = vec4(1.0, 1.0, 1.0, texColor.a * vAlpha * 2.0);
 			}
 		`,
 		blending: THREE.AdditiveBlending,

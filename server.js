@@ -36,23 +36,28 @@ app.use(helmet.contentSecurityPolicy({
     "style-src": [
       "'self'",
       "'unsafe-inline'",
-      "https://fonts.googleapis.com"
+      "https://fonts.googleapis.com",
+      "https://cdn.jsdelivr.net"
     ],
     "style-src-elem": [
       "'self'",
       "'unsafe-inline'",
-      "https://fonts.googleapis.com"
+      "https://fonts.googleapis.com",
+      "https://cdn.jsdelivr.net"
     ],
     "font-src": [
       "'self'",
       "https:",
       "data:",
-      "https://fonts.gstatic.com"
+      "https://fonts.gstatic.com",
+      "https://cdn.jsdelivr.net"
     ],
     "img-src": [
       "'self'",
       "data:",
-      "https:"
+      "https:",
+      "blob:",
+      "filesystem:"
     ],
     "connect-src": [
       "'self'",
@@ -87,6 +92,12 @@ app.get('/spline-particles.js', (_req, res) => {
 app.get('/Files/arrow-right.svg', (_req, res) => {
   res.sendFile(path.join(__dirname, 'Files', 'arrow-right.svg'));
 });
+app.get('/Files/portrait.png', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'Files', 'portrait.png'));
+});
+app.get('/Files/family.jpg', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'Files', 'family.jpg'));
+});
 
 // api rate limit
 const chatLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false });
@@ -104,13 +115,23 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
       return res.status(500).json({ error: 'Server missing GEMINI_API_KEY' });
     }
 
-    // Check if this is an image generation request
-    const imageKeywords = ['draw', 'sketch', 'create image', 'visualize', 'picture', 'illustration', 'design', 'paint', 'render', 'generate image'];
-    const isImageRequest = imageKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword.toLowerCase())
-    );
-
     console.log(`📨 Request: "${message}"`);
+    
+    // REMOVE keyword check for image requests to allow cleaner testing/usage if desired
+    // or keep it but make it very broad.
+    // For now, to "not need an explicit draw command", we can default to image generation
+    // unless it looks like a question? Or just use a "smart" check.
+    
+    // Let's try asking the LLM to classify intent instead of simple keyword matching.
+    // This is more robust.
+    
+    // For this fix, we'll assume everything is an image request unless it's clearly a chat.
+    // Or we can just REMOVE the "isImageRequest" check entirely and always try to generate an image
+    // if that is the primary purpose of this app (Spline Particles tracer).
+    
+    // Based on user request "thought we changed it such that it didn't need an explicit 'draw'":
+    const isImageRequest = true; 
+
     console.log(`🎨 Is image request: ${isImageRequest}`);
 
     if (isImageRequest) {

@@ -260,6 +260,14 @@
     cursor: pointer;
   }
 
+  /* Disable avatar hover effect on larger screens (1024px+) */
+  @media (min-width: 1024px) {
+    body.sidebar-open .avatar:hover .avatar-overlay {
+      opacity: 0;
+      cursor: default;
+    }
+  }
+
   /* Profile text container */
   .profile-text {
     display: flex;
@@ -993,9 +1001,8 @@
 
   .tooltip {
     position: absolute;
-    bottom: calc(100% + 0.5rem);
-    left: 50%;
-    transform: translateX(-50%);
+    top: calc(100% + 0.5rem);
+    left: 0;
     background-color: var(--color-zinc-900);
     color: var(--color-zinc-50);
     border: 1px solid var(--color-zinc-720);
@@ -1009,26 +1016,31 @@
     z-index: 50;
   }
 
-  /* Regular tooltip variant */
-  .tooltip.tooltip-reg {
-    padding: 0.5rem;
-  }
-
-  .tooltip.tooltip-reg {
-    font-size: 0.875rem;
-    font-weight: 400;
-    letter-spacing: -0.015em;
-  }
-
   /* Small tooltip variant */
   .tooltip.tooltip-sm {
-    padding: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 400;
+    padding: 0.375rem 0.5rem;
   }
 
   /* Show tooltip on parent hover */
   .tooltip-wrapper:hover .tooltip {
     opacity: 1;
     visibility: visible;
+  }
+
+  /* Avatar tooltip should only show when sidebar is in open state on smaller screens */
+  #avatarTooltip {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  body.sidebar-open .tooltip-wrapper:hover #avatarTooltip {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Hide avatar tooltip on larger screens (1024px+) */
+  @media (min-width: 1024px) {
+    #avatarTooltip {
+      display: none !important;
+    }
   }

@@ -499,9 +499,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebarToggle = document.querySelector('.sidebar-toggle');
   const sidebarOverlay = document.querySelector('.sidebar-overlay');
   const avatar = document.querySelector('.avatar');
+  const sidebarToggleTooltip = document.getElementById('sidebarToggleTooltip');
+  const avatarTooltip = document.getElementById('avatarTooltip');
+
+  function updateTooltips() {
+    const isSidebarOpen = document.body.classList.contains('sidebar-open');
+    if (sidebarToggleTooltip) {
+      sidebarToggleTooltip.textContent = isSidebarOpen ? 'Close sidebar' : 'Open sidebar';
+    }
+    if (avatarTooltip) {
+      avatarTooltip.textContent = isSidebarOpen ? 'Close sidebar' : 'Open sidebar';
+    }
+  }
 
   function toggleSidebar() {
     document.body.classList.toggle('sidebar-open');
+    updateTooltips();
   }
 
   if (sidebarToggle) {
@@ -511,6 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sidebarOverlay) {
     sidebarOverlay.addEventListener('click', () => {
       document.body.classList.remove('sidebar-open');
+      updateTooltips();
     });
   }
 
@@ -518,6 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
     avatar.addEventListener('click', () => {
       if (document.body.classList.contains('sidebar-open')) {
         document.body.classList.remove('sidebar-open');
+        updateTooltips();
       }
     });
   }

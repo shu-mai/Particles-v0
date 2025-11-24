@@ -35,10 +35,13 @@
         <!-- Top section: Profile -->
         <div class="sidebar-top">
           <!-- Avatar -->
-          <div class="avatar">
-            <div class="avatar-overlay">
-              <i class="ph ph-sidebar-simple"></i>
+          <div class="tooltip-wrapper">
+            <div class="avatar">
+              <div class="avatar-overlay">
+                <i class="ph ph-sidebar-simple"></i>
+              </div>
             </div>
+            <div class="tooltip tooltip-reg" id="avatarTooltip">Close sidebar</div>
           </div>
 
           <!-- Profile text -->
@@ -118,13 +121,43 @@
             <i class="ph ph-lock nav-lock-icon"></i>
           </button>
 
-          <!-- Child tab under TikTok -->
+          <!-- TikTok Case Study #1 tab-->
           <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
             <div class="nav-tab-content">
               <div class="nav-icon-wrapper">
                 <i class="ph ph-circle-fill nav-icon default-icon"></i>
               </div>
-              <span class="nav-text body-1">Improving AI-Generated Prompt Experiences</span>
+              <span class="nav-text body-1">Improving Prompt Experiences</span>
+            </div>
+          </button>
+
+          <!-- TikTok Case Study #2 tab-->
+          <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+            <div class="nav-tab-content">
+              <div class="nav-icon-wrapper">
+                <i class="ph ph-circle-fill nav-icon default-icon"></i>
+              </div>
+              <span class="nav-text body-1">AI-Generated Effects Web MVP Exploration</span>
+            </div>
+          </button>
+
+           <!-- TikTok Case Study #3 tab-->
+           <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+            <div class="nav-tab-content">
+              <div class="nav-icon-wrapper">
+                <i class="ph ph-circle-fill nav-icon default-icon"></i>
+              </div>
+              <span class="nav-text body-1">2D/3D Editor Integration</span>
+            </div>
+          </button>
+
+          <!-- TikTok Case Study #4 tab-->
+          <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+            <div class="nav-tab-content">
+              <div class="nav-icon-wrapper">
+                <i class="ph ph-circle-fill nav-icon default-icon"></i>
+              </div>
+              <span class="nav-text body-1">Effect House AX Research</span>
             </div>
           </button>
 
@@ -150,9 +183,12 @@
         
         <!-- Mobile header (visible only when sidebar is hidden) -->
         <div class="mobile-header">
-          <button class="sidebar-toggle" aria-label="Toggle Sidebar">
-            <i class="ph ph-sidebar-simple"></i>
-          </button>
+          <div class="tooltip-wrapper">
+            <button class="sidebar-toggle" aria-label="Toggle Sidebar">
+              <i class="ph ph-sidebar-simple"></i>
+            </button>
+            <div class="tooltip tooltip-reg" id="sidebarToggleTooltip">Open sidebar</div>
+          </div>
         </div>
 
         <!-- HERO -->
@@ -199,7 +235,7 @@
             <i class="ph ph-lock"></i>
           </div>
           <div class="lock-text">
-            <div class="body-2">This project is locked.</div>
+            <div class="body-2">This file is locked.</div>
             <div class="body-1 lock-text-description">Projects under this file are held against an NDA. Please provide a password to continue.</div>
           </div>
         </div>
@@ -227,7 +263,7 @@
 
       <!-- Bottom section with text -->
       <div class="modal-bottom">
-        <div class="body-1">Everyone should have access to put their imagination to life</div>
+        <div class="body-1">Creativity shouldn’t be limited by resources or skill. Everyone should be able to create.</div>
         <div class="subheading-2 modal-link">Learn more about me</div>
       </div>
     </div>

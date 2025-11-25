@@ -486,6 +486,76 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Truncated nav text tooltip functionality
+  const navTexts = document.querySelectorAll('.nav-text');
+  let tooltipElement = null;
+  let tooltipTimeout = null;
+  const TOOLTIP_DELAY = 600; // 600ms delay before showing tooltip
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+
+  navTexts.forEach(navText => {
+    navText.addEventListener('mouseenter', (e) => {
+      // Check if text is truncated
+      if (navText.scrollWidth > navText.clientWidth) {
+        // Track cursor position
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+
+        // Clear any existing timeout
+        if (tooltipTimeout) clearTimeout(tooltipTimeout);
+
+        // Update mouse position on mousemove
+        const moveHandler = (moveEvent) => {
+          lastMouseX = moveEvent.clientX;
+          lastMouseY = moveEvent.clientY;
+        };
+
+        navText.addEventListener('mousemove', moveHandler);
+        navText._tooltipMoveHandler = moveHandler;
+
+        // Set timeout for showing tooltip
+        tooltipTimeout = setTimeout(() => {
+          // Create or reuse tooltip element
+          if (!tooltipElement) {
+            tooltipElement = document.createElement('div');
+            tooltipElement.className = 'nav-text-tooltip';
+            document.body.appendChild(tooltipElement);
+          }
+
+          // Set tooltip content
+          tooltipElement.textContent = navText.textContent;
+
+          // Position tooltip at last known cursor position with offset
+          tooltipElement.style.left = (lastMouseX +8) + 'px';
+          tooltipElement.style.top = (lastMouseY +36) + 'px';
+
+          // Show tooltip
+          tooltipElement.classList.add('visible');
+        }, TOOLTIP_DELAY);
+      }
+    });
+
+    navText.addEventListener('mouseleave', () => {
+      // Clear timeout if tooltip hasn't shown yet
+      if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = null;
+      }
+
+      // Hide tooltip
+      if (tooltipElement) {
+        tooltipElement.classList.remove('visible');
+      }
+
+      // Remove mousemove handler
+      if (navText._tooltipMoveHandler) {
+        navText.removeEventListener('mousemove', navText._tooltipMoveHandler);
+        delete navText._tooltipMoveHandler;
+      }
+    });
+  });
+
   // Modal close functionality
   const modal = document.getElementById('mainModal');
   const closeBtn = document.querySelector('.modal-close');

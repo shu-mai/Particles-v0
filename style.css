@@ -362,6 +362,17 @@
     flex-shrink: 0;
     margin-left: auto; /* Pushes it to the right end if container is flex */
   }
+
+  /* Arrow icon - hidden by default, shown on hover */
+  .nav-arrow-icon {
+    color: var(--color-zinc-400);
+    opacity: 0;
+  }
+
+  .nav-tab:hover .nav-arrow-icon {
+    color: var(--color-zinc-400);
+    opacity: 1;
+  }
   
   /* Icon styling */
   .nav-icon {
@@ -792,7 +803,6 @@
     color: var(--color-zinc-50);
   }
 
-
   .modal-close i {
     width: 1rem;
     height: 1rem;
@@ -1044,3 +1054,111 @@
       display: none !important;
     }
   }
+
+  /* Cursor-following tooltip for truncated nav tabs */
+  .nav-text-tooltip {
+    position: fixed;
+    background-color: var(--color-zinc-900);
+    color: var(--color-zinc-50);
+    border: 1px solid var(--color-zinc-720);
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: nowrap;
+    box-shadow: var(--shadow-med);
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s, visibility 0.15s;
+  }
+
+  .nav-text-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+
+
+/* ============================================== */
+/* Page Components */
+/* ============================================== */
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.page-break {
+  display: flex;
+  padding: 1.5rem;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap:0.5rem;
+  
+  background: var(--color-zinc-900);
+  border-left: 2px solid var (--color-zinc-600);
+
+  color: var(--color-zinc-50);
+}
+
+.callout {
+  display:flex;
+  padding: 1.5rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+
+  border-left: 2px solid var(--color-zinc-600);
+}
+
+.callout-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.callout-text .body-2 {
+  color: var(--color-zinc-50);
+}
+
+.callout-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.table-header {
+  display: flex;
+  flex-direction: row;
+  padding: 0.75rem 1.5rem 0.75rem 0.5rem;
+  align-items: flex-start;
+  gap: 0.375rem;
+
+  border-bottom: 2px solid var(--color-zinc-600);
+}
+
+.table-header .overline-1 {
+  color: var(--color-zinc-500);
+}
+
+.table-header-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-zinc-500);
+}
+
+.table-cell {
+  display: flex;
+  padding: 0.75rem 1 rem 0.75rem 0.5rem;
+  align-items: flex-start;
+
+  border-bottom: 1px solid var(--color-zinc-700);
+}
+
+.table-cell .body-2 {
+  color: var(--color-zinc-50);
+}

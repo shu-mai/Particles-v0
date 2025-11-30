@@ -657,4 +657,408 @@ document.addEventListener('DOMContentLoaded', () => {
       passwordInput.value = '';
     });
   }
+
+  // Page navigation for child tabs
+  const childTabs = document.querySelectorAll('.nav-child-tab');
+  const pageContainer = document.getElementById('pageContainer');
+  const pageHeader = document.getElementById('pageHeader');
+  const pageContent = document.getElementById('pageContent');
+  const contentArea = document.querySelector('.content');
+
+  // Page data mapping
+  const pageData = {
+    'improving-prompt-experiences': {
+      header: 'Improving Prompt Experiences',
+      subheader: 'Auto generating effects from daily trends',
+      content: `
+
+      <!-- TABLE -->
+        <div class="table">
+
+        <!-- TABLE HEADERS-->
+          <div class="table-headers">
+            <!--
+            <div class="table-header">
+              <i class="ph ph-spinner table-header-icon"></i>
+              <span class="overline-1">Stage</span>
+            </div>
+            -->
+            <div class="table-header">
+              <i class="ph ph-calendar table-header-icon"></i>
+              <span class="overline-1">Timeline</span>
+            </div>
+            <div class="table-header">
+              <i class="ph ph-map-pin table-header-icon"></i>
+              <span class="overline-1">Location</span>
+            </div>
+            <div class="table-header">
+              <i class="ph ph-palette table-header-icon"></i>
+              <span class="overline-1">Designer</span>
+            </div>
+            <div class="table-header">
+              <i class="ph ph-user table-header-icon"></i>
+              <span class="overline-1">PM</span>
+            </div>
+          </div>
+
+        <!-- TABLE CELLS-->
+          <div class="table-cells">
+            <!--
+            <div class="table-cell">
+              <div class="badge" style="background: #78350F;">
+                <i class="ph ph-circle-notch badge-icon" style="color: #F59E0B;"></i>
+                <span class="body-1">Early</span>
+              </div>
+            </div>
+            -->
+            <div class="table-cell">
+              <span class="body-2">Aug 21 - Aug 28 (1 week)</span>
+            </div>
+            <div class="table-cell">
+              <span class="body-2">San Jose, CA</span>
+            </div>
+            <div class="table-cell">
+              <span class="body-2">Michelle Xu</span>
+            </div>
+            <div class="table-cell">
+              <span class="body-2">Lesliee Liu</span>
+            </div>
+          </div>
+        </div>
+
+      <!-- CALLOUT-1 -->
+        <div class="callout-1">
+          <div class="callout-1-icon-container">
+            <i class="ph ph-star callout-icon"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">TLDR</span>
+              <span class="body-2">This project aims to redesign the AIGE prompt experience so users can easily discover Effect Types, engage with trend-driven suggestions, and write effective prompts, while reducing drop-off and ensuring the system scales as skills grow.</span>
+          </div>
+        </div>
+
+      <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">Intro</span>
+        </div>
+
+      <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">1 | What do users want?</div>
+          <div class="page-content-text-body">
+          <span class="body-2">1. Help with discovering Effect Types easier.</span>
+          <span class="body-2">2. Trend-driven suggestions to increase engagement.</span>
+          <span class="body-2">3. Help with writing more effective prompts.</span>
+          </div>
+          </div>
+
+      <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">2 | Problem</div>
+          <div class="page-content-text-body">
+          <span class="body-2">However, most users don't understand how trendy topics connect to prompt creation. The interaction between both dropdowns in the prompt box adds ambiguity and restricts freetype, creating friction in the core experience.</span>
+          <br>
+          <span class="body-2">Moreover, the Effect Type dropdown (30 items) and Trendy Topics Dropdown (20 items) are overloaded and lack context.</span>
+          </div>
+          </div>
+
+      <!-- PAGE-CONTENT-TEXT -->
+          <div class="page-content-text">
+        <div class="page-content-text-title heading-2">3 | Scalabilty</div>
+          <div class="page-content-text-body">
+          <span class="body-2">Ultimately, our goal is to reduce the 30% drop-off from launching AIGE to submitting a message. As AIGE skills grow, a dropdown will not provide enough context or support the increasing number of Effect Types, which risks stagnating or even increasing the drop-off rate.</span>
+          <br>
+          <span class="body-2">Therefore, we need to...</span>
+          <span class="body-2">1. Clarify interaction so LLM-powered features can scale.</span>
+          <span class="body-2">2. Future-proof the system as the "Effect Types" list grows, avoiding dropdown overload.</span>
+          </div>
+          </div>
+
+      <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">Key solutions</span>
+        </div>
+
+      <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">Results</span>
+        </div>
+
+      <!-- CALLOUT -->
+        <div class="callout">
+          <div class="callout-icon-container">
+            <i class="ph ph-x-circle callout-icon" style="color: #DC2626;"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">Tying the "Trend Topics" and "Effect Type" dropdowns together creates confusion and a forced connection.</span>
+          </div>
+        </div>
+
+      <!-- CALLOUT -->
+        <div class="callout">
+          <div class="callout-icon-container">
+            <i class="ph ph-check-circle callout-icon" style="color: #16A34A;"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">Separate Effect Types from Trend Topics.</span>
+              <br>
+              <span class="body-2">Effect Types should be browsable, with default prompts applied as placeholder text to guide and educate users.</span>
+              <br>
+              <span class="body-2">Suggestive prompts appear when the user clicks into the text box to type, and only show when relevant to the chosen Effect Type.</span>
+          </div>
+        </div>
+
+      <!-- CALLOUT -->
+        <div class="callout">
+          <div class="callout-icon-container">
+            <i class="ph ph-x-circle callout-icon" style="color: #DC2626;"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">Trendy Topics dropdowns are overloaded and abstract.</span>
+          </div>
+        </div>
+
+      <!-- CALLOUT -->
+        <div class="callout">
+          <div class="callout-icon-container">
+            <i class="ph ph-check-circle callout-icon" style="color: #16A34A;"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">Trendy Topics appear as inline prompt suggestions using simple language; headline the first 5 or less trends.</span>
+          </div>
+        </div>
+
+      <!-- CALLOUT -->
+        <div class="callout">
+          <div class="callout-icon-container">
+            <i class="ph ph-x-circle callout-icon" style="color: #DC2626;"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">Freetyping feels restricted.</span>
+          </div>
+        </div>
+
+      <!-- CALLOUT -->
+        <div class="callout">
+          <div class="callout-icon-container">
+            <i class="ph ph-check-circle callout-icon" style="color: #16A34A;"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">Provide sample prompts progressively. Suggestions should guide users in writing effective prompts without enforcing them, so the main task remains focused on freetyping.</span>
+          </div>
+        </div>
+
+      <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">Detailed design decisions</span>
+        </div>
+      `
+    },
+
+    'ai-generated-effects-web-mvp-exploration': {
+      header: 'AI-Generated Effects Web MVP Exploration',
+      subheader: 'Turning legacy tooling into web chat workflows',
+      content: `
+      <!-- TABLE -->
+        <div class="table">
+
+        <!-- TABLE HEADERS-->
+          <div class="table-headers">
+            <div class="table-header">
+              <i class="ph ph-calendar table-header-icon"></i>
+              <span class="overline-1">Timeline</span>
+            </div>
+            <div class="table-header">
+              <i class="ph ph-map-pin table-header-icon"></i>
+              <span class="overline-1">Location</span>
+            </div>
+            <div class="table-header">
+              <i class="ph ph-palette table-header-icon"></i>
+              <span class="overline-1">Designers</span>
+            </div>
+            <div class="table-header">
+              <i class="ph ph-user table-header-icon"></i>
+              <span class="overline-1">Design Lead</span>
+            </div>
+          </div>
+
+        <!-- TABLE CELLS-->
+          <div class="table-cells">
+            <div class="table-cell">
+              <span class="body-2">July 28 - Aug 1 (1 week)</span>
+            </div>
+            <div class="table-cell">
+              <span class="body-2">San Jose, CA</span>
+            </div>
+            <div class="table-cell">
+              <span class="body-2">Michelle Xu, Zuki Zhang</span>
+            </div>
+            <div class="table-cell">
+              <span class="body-2">Zijian Zhang</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CALLOUT-1 -->
+        <div class="callout-1">
+          <div class="callout-1-icon-container">
+            <i class="ph ph-star callout-icon"></i>
+          </div>
+          <div class="callout-text">
+              <span class="body-2">TLDR</span>
+              <span class="body-2">Build an AI-powered, lightweight Effect House to reduce the steep learning curve.</span>
+          </div>
+        </div>
+
+        <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">Background</span>
+        </div>
+
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+          <div class="page-content-text-body">
+          <span class="body-2">In collaboration with R&D, we’ve validated early feasibility through a concept called Design-in-Loop.</span>
+          </div>
+          </div>
+
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">1 | Design goal</div>
+          <div class="page-content-text-body">
+          <span class="body-2">Context-aware chat that combines editing and workspace flexibility.</span>
+          </div>
+          </div>
+        
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">1 | Value</div>
+          <div class="page-content-text-body">
+          <span class="body-2">Creators gravitate toward repeatable, visual effects (beauty, green screen, filters, etc).</span>
+          </div>
+          </div>
+        
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+          <div class="page-content-text-body">
+          <span class="body-2">Opportunity: Enhance T2I workflows with AI assistance → drives higher conversion.</span>
+          </div>
+          </div>
+
+        <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">Creation flow</span>
+        </div>
+
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">1 | Ideation</div>
+          <div class="page-content-text-body">
+          <span class="body-2">Generate assets (T2I, I2I), pull from references, and use templates to spark ideas and build prompts.</span>
+          </div>
+          </div>
+
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">2 | Editing</div>
+          <div class="page-content-text-body">
+          <span class="body-2">Refine and evolve creations directly through the chat, making it the centralized point for editing.</span>
+          </div>
+          </div>
+
+        <!-- PAGE-BREAK -->
+        <div class="page-break">
+          <span class="heading-2">User flow</span>
+        </div>
+
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">Users with a clear idea</div>
+          </div>
+          </div>
+
+        <!-- PAGE-CONTENT-TEXT -->
+        <div class="page-content-text">
+        <div class="page-content-text-title heading-2">Users not sure what to create</div>
+          </div>
+          </div>
+      `
+    },
+
+    '2d-3d-editor-integration': {
+      header: '2D/3D Editor Integration',
+      content: ''
+    },
+    'effect-house-ax-research': {
+      header: 'Effect House AX Research',
+      content: ''
+    }
+  };
+
+  // Function to navigate to a page
+  function navigateToPage(pageId) {
+    const page = pageData[pageId];
+    const tab = document.querySelector(`[data-page="${pageId}"]`);
+
+    if (page) {
+      // Update page header and content
+      let headerHTML = `<span class="heading-1">${page.header}</span>`;
+      if (page.subheader) {
+        headerHTML += `<span class="subheading-1">${page.subheader}</span>`;
+      }
+      pageHeader.innerHTML = headerHTML;
+      pageContent.innerHTML = page.content;
+
+      // Show page container and hide hero/input
+      pageContainer.classList.add('active');
+      contentArea.classList.add('page-open');
+
+      // Update active tab
+      childTabs.forEach(t => t.classList.remove('active'));
+      if (tab) tab.classList.add('active');
+
+      // Update URL hash
+      window.location.hash = pageId;
+    }
+  }
+
+  // Function to go to home
+  function navigateToHome() {
+    pageContainer.classList.remove('active');
+    contentArea.classList.remove('page-open');
+    childTabs.forEach(t => t.classList.remove('active'));
+    
+    // Clear URL hash
+    history.pushState('', document.title, window.location.pathname + window.location.search);
+  }
+
+  // Handle child tab clicks
+  childTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const pageId = tab.getAttribute('data-page');
+      navigateToPage(pageId);
+    });
+  });
+
+  // Home button closes page view
+  const homeTab = document.querySelector('[data-tab="house"]');
+  if (homeTab) {
+    homeTab.addEventListener('click', navigateToHome);
+  }
+
+  // On page load, check if there's a hash in the URL and navigate to that page
+  const initialHash = window.location.hash.slice(1); // Remove the '#'
+  if (initialHash && pageData[initialHash]) {
+    navigateToPage(initialHash);
+  }
+
+  // Handle browser back/forward buttons
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.slice(1);
+    if (hash && pageData[hash]) {
+      navigateToPage(hash);
+    } else {
+      navigateToHome();
+    }
+  });
 });

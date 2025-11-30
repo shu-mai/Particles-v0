@@ -24,7 +24,7 @@ function initializeParticleSystem(THREE, canvas) {
 
 	// Renderer
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Cap pixel ratio for performance
 	renderer.setClearColor(0x000000, 0);
 	
 	// Responsive sizing (will be updated after material is created)
@@ -471,8 +471,31 @@ function initializeParticleSystem(THREE, canvas) {
 	}
 
 	let last = performance.now();
+	let isPaused = false;
+
+	// Pause/resume animation based on page visibility and child page state
+	function checkShouldPause() {
+		const pageOpen = document.body.querySelector('.content.page-open');
+		const hidden = document.hidden;
+		isPaused = hidden || !!pageOpen;
+	}
+
+	// Listen for visibility changes and page state changes
+	document.addEventListener('visibilitychange', checkShouldPause);
+	
+	// Use MutationObserver to detect when .page-open class is added/removed
+	const observer = new MutationObserver(checkShouldPause);
+	const contentEl = document.querySelector('.content');
+	if (contentEl) {
+		observer.observe(contentEl, { attributes: true, attributeFilter: ['class'] });
+	}
+
 	(function animate() {
 		requestAnimationFrame(animate);
+		if (isPaused) {
+			last = performance.now(); // Reset timer to avoid big dt jump when resuming
+			return;
+		}
 		const now = performance.now();
 		const dt = (now - last) / 1000; last = now;
 		lerpConfig(dt);

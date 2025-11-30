@@ -17,11 +17,6 @@
       type="text/css"
       href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css"
     />
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css"
-    />
   </head>
   <body>
     <!-- Two-column layout container -->
@@ -131,7 +126,7 @@
           </button>
 
           <!-- TikTok Case Study #1 tab-->
-          <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+          <button class="nav-tab nav-child-tab" data-page="improving-prompt-experiences">
             <div class="nav-tab-content">
               <div class="nav-icon-wrapper">
                 <i class="ph ph-circle-fill nav-icon default-icon"></i>
@@ -141,7 +136,7 @@
           </button>
 
           <!-- TikTok Case Study #2 tab-->
-          <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+          <button class="nav-tab nav-child-tab" data-page="ai-generated-effects-web-mvp-exploration">
             <div class="nav-tab-content">
               <div class="nav-icon-wrapper">
                 <i class="ph ph-circle-fill nav-icon default-icon"></i>
@@ -151,7 +146,7 @@
           </button>
 
            <!-- TikTok Case Study #3 tab-->
-           <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+           <button class="nav-tab nav-child-tab" data-page="2d-3d-editor-integration">
             <div class="nav-tab-content">
               <div class="nav-icon-wrapper">
                 <i class="ph ph-circle-fill nav-icon default-icon"></i>
@@ -161,7 +156,7 @@
           </button>
 
           <!-- TikTok Case Study #4 tab-->
-          <button class="nav-tab nav-child-tab" data-tab="tiktok-child">
+          <button class="nav-tab nav-child-tab" data-page="effect-house-ax-research">
             <div class="nav-tab-content">
               <div class="nav-icon-wrapper">
                 <i class="ph ph-circle-fill nav-icon default-icon"></i>
@@ -221,6 +216,16 @@
                   <i class="ph ph-bold ph-arrow-elbow-down-right"></i>
                 </span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Page Container (hidden by default) -->
+        <div class="page-container" id="pageContainer">
+          <div class="page-inner">
+            <div class="page-header" id="pageHeader"></div>
+            <div class="page-content" id="pageContent">
+              <!-- Page content will be dynamically loaded here -->
             </div>
           </div>
         </div>

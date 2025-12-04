@@ -733,7 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="callout-text">
               <span class="body-2">TLDR</span>
-              <span class="body-2">This project aims to redesign the AIGE prompt experience so users can easily discover Effect Types, engage with trend-driven suggestions, and write effective prompts, while reducing drop-off and ensuring the system scales as skills grow.</span>
+              <span class="body-2">I redesigned the prompt experience so users can easily discover templates, engage with trend-driven suggestions, and write effective prompts to reduce drop-off.</span>
           </div>
         </div>
 
@@ -777,6 +777,22 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- PAGE-BREAK -->
         <div class="page-break">
           <span class="heading-2">Key solutions</span>
+        </div>
+
+      <!-- VIDEO -->
+        <div class="media-container">
+          <div class="media media-video" onclick="playVideo(this)">
+            <video muted loop playsinline preload="metadata">
+              <source src="Private/TikTok/Improving%20Prompt%20Experiences/main_flow.mov" type="video/mp4" />
+            </video>
+            <div class="play-button">
+              <i class="ph-fill ph-play"></i>
+            </div>
+            <div class="btm-scrim"></div>
+          </div>
+          <div class="caption">
+            <span class="caption-1">main flow</span>
+          </div>
         </div>
 
       <!-- PAGE-BREAK -->
@@ -851,6 +867,28 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- PAGE-BREAK -->
         <div class="page-break">
           <span class="heading-2">Detailed design decisions</span>
+        </div>
+
+      <!-- COMMENT -->
+        <div class="comment">
+          <div class="comment-content" id="commentContent">
+            <div class="comment-profile">
+              <img src="public/profiles/hello_kitty.jpeg" alt="Profile">
+            </div>
+            <div class="comment-text-container">
+              <div class="comment-profile-name body-1">Lesliee Liu</div>
+              <div class="body-2">Received user feedback from Discord group complaining about the following UX blockers:</div>
+              <div class="body-2">Poor skill discovery</div>
+              <div class="body-2">Painful waiting experience for preview</div>
+              <div class="body-2">Survey shows thats users have a strong demand for “trend-chasing”.</div>
+            </div>
+            <div class="comment-btm-scrim"></div>
+          </div>
+          <button class="comment-full-button">
+            <div class="comment-full-button-icon">
+              <i class="ph ph-caret-down"></i>
+            </div>
+          </button>
         </div>
       `
     },
@@ -989,8 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
       header: '2D/3D Editor Integration',
       content: ''
     },
-    'effect-house-ax-research': {
-      header: 'Effect House AX Research',
+    'ax-research': {
+      header: 'AX Research',
       content: ''
     }
   };
@@ -1061,4 +1099,78 @@ document.addEventListener('DOMContentLoaded', () => {
       navigateToHome();
     }
   });
+});
+
+// Video click-to-play functionality
+function playVideo(container) {
+  const video = container.querySelector('video');
+  if (video) {
+    container.classList.add('playing');
+    video.setAttribute('controls', '');
+    video.muted = false;
+    video.play();
+  }
+}
+
+// Hover preview for videos (YouTube/TikTok style)
+document.addEventListener('mouseenter', (e) => {
+  const container = e.target.closest('.media-video:not(.playing)');
+  if (container) {
+    const video = container.querySelector('video');
+    if (video) {
+      video.muted = true;
+      video.play().catch(err => console.log('Video play failed:', err));
+    }
+  }
+}, true);
+
+document.addEventListener('mouseleave', (e) => {
+  const container = e.target.closest('.media-video:not(.playing)');
+  if (container) {
+    const video = container.querySelector('video');
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }
+}, true);
+
+// Comment expand functionality
+function checkCommentOverflow(comment) {
+  const commentContent = comment.querySelector('.comment-content');
+  if (!commentContent) return;
+
+  // Check if content is actually overflowing
+  const isOverflowing = commentContent.scrollHeight > commentContent.clientHeight;
+
+  if (isOverflowing) {
+    comment.classList.add('has-overflow');
+  } else {
+    comment.classList.remove('has-overflow');
+  }
+}
+
+// Initialize all comments on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const comments = document.querySelectorAll('.comment');
+  comments.forEach(comment => {
+    // Wait for images to load before checking overflow
+    const profileImg = comment.querySelector('.comment-profile img');
+    if (profileImg && !profileImg.complete) {
+      profileImg.addEventListener('load', () => {
+        setTimeout(() => checkCommentOverflow(comment), 0);
+      });
+    } else {
+      setTimeout(() => checkCommentOverflow(comment), 0);
+    }
+  });
+});
+
+document.addEventListener('click', (e) => {
+  const expandButton = e.target.closest('.comment-full-button');
+  if (expandButton) {
+    const comment = expandButton.closest('.comment');
+    const commentContent = comment.querySelector('.comment-content');
+    commentContent.classList.toggle('expanded');
+  }
 });

@@ -59,6 +59,11 @@ app.use(helmet.contentSecurityPolicy({
       "blob:",
       "filesystem:"
     ],
+    "media-src": [
+      "'self'",
+      "blob:",
+      "data:"
+    ],
     "connect-src": [
       "'self'",
       "https://generativelanguage.googleapis.com",
@@ -79,7 +84,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' })); // Increased for base64 images
 
-// Restrict static file serving to explicit routes (avoid exposing entire directory)
+// Serve static files
 app.get('/style.css', (_req, res) => {
   res.sendFile(path.join(__dirname, 'style.css'));
 });
@@ -89,15 +94,12 @@ app.get('/script.js', (_req, res) => {
 app.get('/spline-particles.js', (_req, res) => {
   res.sendFile(path.join(__dirname, 'spline-particles.js'));
 });
-app.get('/Files/arrow-right.svg', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'Files', 'arrow-right.svg'));
-});
-app.get('/Files/portrait.png', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'Files', 'portrait.png'));
-});
-app.get('/Files/family.jpg', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'Files', 'family.jpg'));
-});
+
+// Serve Public folder (images, logos, etc.)
+app.use('/Public', express.static(path.join(__dirname, 'Public')));
+
+// Serve Private folder (case study videos, etc.)
+app.use('/Private', express.static(path.join(__dirname, 'Private')));
 
 // api rate limit
 const chatLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false });

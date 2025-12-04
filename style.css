@@ -65,6 +65,12 @@
   font-weight: 400;
   font-family: var(--font-sans);
 }
+.caption-1 {
+  font-size: 0.875rem;
+  font-weight: 400;
+  font-family: var(--font-sans);
+  font-style: italic;
+}
 .overline-1 {
   font-size: 0.875rem;
   font-weight: 400;
@@ -228,7 +234,7 @@
     height: 3rem;
     flex-shrink: 0;
     border-radius: 50%;
-    background-image: url('Files/portrait.png');
+    background-image: url('Public/Logos/portrait.png');
     background-size: 120%;
     background-position: 70%;
     position: relative; /* Needed for overlay positioning */
@@ -766,7 +772,7 @@
   .modal-image {
     height: 12.5rem;
     width: 100%;
-    background-image: url('Files/family.jpg');
+    background-image: url('Public/Modal/family.jpg');
     background-size: 110%;
     background-position: 35%;
     background-repeat: no-repeat;
@@ -1131,7 +1137,7 @@
   }
 
 /* ============================================== */
-/* Page Components */
+/* page components */
 /* ============================================== */
 
 .page-header {
@@ -1268,7 +1274,7 @@
 }
 
 /* ============================================== */
-/* Table Components */
+/* table components */
 /* ============================================== */
 
 .table-header {
@@ -1279,7 +1285,7 @@
   align-items: flex-start;
   gap: 0.5rem;
   min-width: 10rem;
-  max-width: 13.75rem;
+  /* max-width: 13.75rem; */
 
   border-bottom: 2px solid var(--color-zinc-600);
 }
@@ -1323,4 +1329,223 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
+}
+
+/* ============================================== */
+/* media container (wrapper for media + caption) */
+/* ============================================== */
+
+.media-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.media-container .caption {
+  width: 100%;
+  margin-top: 0.5rem;
+  /* text-align: center; */
+}
+
+.media-container .caption .caption-1 {
+  color: var(--color-zinc-500);
+}
+
+/* ============================================== */
+/* media (image or video) */
+/* ============================================== */
+
+.media {
+  width: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.media img,
+.media video {
+  width: 100%;
+  display: block;
+}
+
+/* ============================================== */
+/* video specific */
+/* ============================================== */
+
+.media-video {
+  cursor: pointer;
+}
+
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(25px);
+  color: var(--color-zinc-50);
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.play-button i {
+  width: 2rem;
+  height: 2rem;
+  font-size: 2rem;
+}
+
+.btm-scrim {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+/* video hover state */
+.media-video:hover .play-button {
+  opacity: 0;
+}
+
+.media-video:hover .btm-scrim {
+  opacity: 1;
+}
+
+/* video playing state */
+.media-video.playing {
+  cursor: default;
+}
+
+.media-video.playing .play-button,
+.media-video.playing .btm-scrim {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============================================== */
+/* Comment Component */
+/* ============================================== */
+
+.comment {
+  background-color: var(--color-zinc-900);
+  border-radius: 1rem;
+  border: 1px solid var(--color-zinc-720);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Hide scrim and button when content doesn't overflow */
+.comment:not(.has-overflow) .comment-btm-scrim,
+.comment:not(.has-overflow) .comment-full-button {
+  display: none;
+}
+
+.comment-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1rem;
+  max-height: 18rem;
+  align-self: stretch;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.comment-profile {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comment-profile img {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.comment-text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  flex: 1 0 0;
+  width: 100%;
+  padding: 0.5rem 3.5rem 1rem 0;
+}
+
+.comment-profile-name {
+  color: var(--color-zinc-50);
+}
+
+.comment-btm-scrim {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 7.5rem;
+  background: linear-gradient(to bottom, rgba(12, 12, 14, 0) 0%, var(--color-zinc-900) 100%);
+  pointer-events: none;
+}
+
+.comment-full-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-zinc-900);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.comment-full-button:hover {
+  background-color: var(--color-zinc-810);
+}
+
+.comment-full-button-icon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comment-full-button-icon i {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.5rem;
+  color: var(--color-zinc-700);
+  transition: color 0.2s ease;
+}
+
+.comment-full-button:hover .comment-full-button-icon i {
+  color: var(--color-zinc-600);
+}
+
+.comment-content.expanded {
+  max-height: none;
+}
+
+.comment-content.expanded .comment-btm-scrim {
+  display: none;
 }
